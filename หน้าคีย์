@@ -1,0 +1,421 @@
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+
+local Ophyn = loadstring(game:HttpGet("https://ophyn.space/interface"))()
+
+local KeyExpireTime = nil
+local CurrentKey = nil
+
+local function FormatTime(seconds)
+    seconds = math.max(0, math.floor(seconds))
+
+    local hours = math.floor(seconds / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local secs = seconds % 60
+
+    return string.format("%dh %02dm %02ds", hours, minutes, secs)
+end
+
+local function CreateKeyExpireUI()
+    local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+    local old = PlayerGui:FindFirstChild("FlexozyKeyExpire")
+    if old then
+        old:Destroy()
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "FlexozyKeyExpire"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.Parent = PlayerGui
+
+    -- Main
+    local Main = Instance.new("Frame")
+    Main.Name = "ExpireFrame"
+    Main.AnchorPoint = Vector2.new(1, 0)
+    Main.Position = UDim2.new(1, 15, 0, 15)
+    Main.Size = UDim2.new(0, 205, 0, 58)
+    Main.BackgroundColor3 = Color3.fromRGB(7, 16, 24)
+    Main.BackgroundTransparency = 0.06
+    Main.BorderSizePixel = 0
+    Main.ClipsDescendants = true
+    Main.Parent = ScreenGui
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 12)
+    Corner.Parent = Main
+
+    -- ฟ้า/ขาว Border
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Color = Color3.fromRGB(120, 220, 255)
+    Stroke.Thickness = 1.4
+    Stroke.Transparency = 0.12
+    Stroke.Parent = Main
+
+    -- Background Gradient
+    local Gradient = Instance.new("UIGradient")
+    Gradient.Rotation = 90
+    Gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(13, 29, 42)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(7, 18, 27)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(4, 11, 17))
+    })
+    Gradient.Parent = Main
+
+    -- Glow แสงฟ้าวิ่งผ่าน
+    local Glow = Instance.new("Frame")
+    Glow.Name = "Glow"
+    Glow.Size = UDim2.new(0, 65, 1, 30)
+    Glow.Position = UDim2.new(-0.35, 0, -0.15, 0)
+    Glow.BackgroundColor3 = Color3.fromRGB(110, 225, 255)
+    Glow.BackgroundTransparency = 0.86
+    Glow.BorderSizePixel = 0
+    Glow.Rotation = 15
+    Glow.ZIndex = 2
+    Glow.Parent = Main
+
+    local GlowCorner = Instance.new("UICorner")
+    GlowCorner.CornerRadius = UDim.new(1, 0)
+    GlowCorner.Parent = Glow
+
+    -- Shimmer แสงขาวฟ้าวิ่ง
+    local Shimmer = Instance.new("Frame")
+    Shimmer.Name = "Shimmer"
+    Shimmer.Size = UDim2.new(0, 45, 1.6, 0)
+    Shimmer.Position = UDim2.new(-0.25, 0, -0.3, 0)
+    Shimmer.BackgroundColor3 = Color3.fromRGB(220, 250, 255)
+    Shimmer.BackgroundTransparency = 0.72
+    Shimmer.BorderSizePixel = 0
+    Shimmer.Rotation = 18
+    Shimmer.ZIndex = 3
+    Shimmer.Parent = Main
+
+    local ShimmerGradient = Instance.new("UIGradient")
+    ShimmerGradient.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(0.45, 0.15),
+        NumberSequenceKeypoint.new(0.55, 0.15),
+        NumberSequenceKeypoint.new(1, 1)
+    })
+    ShimmerGradient.Parent = Shimmer
+
+    -- Icon
+    local IconFrame = Instance.new("Frame")
+    IconFrame.Size = UDim2.new(0, 35, 0, 35)
+    IconFrame.Position = UDim2.new(0, 10, 0.5, -17)
+    IconFrame.BackgroundColor3 = Color3.fromRGB(35, 135, 180)
+    IconFrame.BackgroundTransparency = 0.15
+    IconFrame.BorderSizePixel = 0
+    IconFrame.ZIndex = 5
+    IconFrame.Parent = Main
+
+    local IconCorner = Instance.new("UICorner")
+    IconCorner.CornerRadius = UDim.new(0, 9)
+    IconCorner.Parent = IconFrame
+
+    local IconStroke = Instance.new("UIStroke")
+    IconStroke.Color = Color3.fromRGB(150, 235, 255)
+    IconStroke.Transparency = 0.35
+    IconStroke.Thickness = 1
+    IconStroke.Parent = IconFrame
+
+local Icon = Instance.new("ImageLabel")
+Icon.Size = UDim2.new(0, 22, 0, 22)
+Icon.Position = UDim2.new(0.5, -11, 0.5, -11)
+Icon.BackgroundTransparency = 1
+
+-- ใส่ Asset ID รูปนาฬิกาของคุณตรงนี้
+Icon.Image = "rbxassetid://10709805144"
+
+Icon.ImageColor3 = Color3.fromRGB(225, 250, 255)
+Icon.ImageTransparency = 0
+Icon.ScaleType = Enum.ScaleType.Fit
+Icon.ZIndex = 6
+Icon.Parent = IconFrame
+
+    -- Title
+    local Title = Instance.new("TextLabel")
+    Title.BackgroundTransparency = 1
+    Title.Position = UDim2.new(0, 54, 0, 7)
+    Title.Size = UDim2.new(1, -64, 0, 16)
+    Title.Font = Enum.Font.GothamBold
+    Title.Text = "KEY EXPIRES"
+    Title.TextColor3 = Color3.fromRGB(175, 225, 240)
+    Title.TextSize = 9
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.ZIndex = 6
+    Title.Parent = Main
+
+    -- Timer
+    local Timer = Instance.new("TextLabel")
+    Timer.BackgroundTransparency = 1
+    Timer.Position = UDim2.new(0, 54, 0, 23)
+    Timer.Size = UDim2.new(1, -64, 0, 24)
+    Timer.Font = Enum.Font.GothamBold
+    Timer.Text = "กำลังตรวจสอบ..."
+    Timer.TextColor3 = Color3.fromRGB(245, 253, 255)
+    Timer.TextSize = 13
+    Timer.TextXAlignment = Enum.TextXAlignment.Left
+    Timer.ZIndex = 6
+    Timer.Parent = Main
+
+    -- เส้นด้านล่าง
+    local Line = Instance.new("Frame")
+    Line.Name = "Progress"
+    Line.Position = UDim2.new(0, 10, 1, -4)
+    Line.Size = UDim2.new(1, -20, 0, 2)
+    Line.BackgroundColor3 = Color3.fromRGB(100, 215, 255)
+    Line.BorderSizePixel = 0
+    Line.ZIndex = 7
+    Line.Parent = Main
+
+    local LineCorner = Instance.new("UICorner")
+    LineCorner.CornerRadius = UDim.new(1, 0)
+    LineCorner.Parent = Line
+
+    -- แสงวิ่งบนเส้น
+    local LineGlow = Instance.new("Frame")
+    LineGlow.Size = UDim2.new(0, 35, 1, 3)
+    LineGlow.Position = UDim2.new(-0.2, 0, -0.5, 0)
+    LineGlow.BackgroundColor3 = Color3.fromRGB(230, 250, 255)
+    LineGlow.BackgroundTransparency = 0.25
+    LineGlow.BorderSizePixel = 0
+    LineGlow.ZIndex = 8
+    LineGlow.Parent = Line
+
+    local LineGlowCorner = Instance.new("UICorner")
+    LineGlowCorner.CornerRadius = UDim.new(1, 0)
+    LineGlowCorner.Parent = LineGlow
+
+    -- Animation ตอนเปิด
+    TweenService:Create(
+        Main,
+        TweenInfo.new(
+            0.45,
+            Enum.EasingStyle.Quart,
+            Enum.EasingDirection.Out
+        ),
+        {
+            Position = UDim2.new(1, -15, 0, 15)
+        }
+    ):Play()
+
+    -- Animation Shimmer
+    task.spawn(function()
+        while ScreenGui.Parent do
+            Shimmer.Position = UDim2.new(-0.25, 0, -0.3, 0)
+
+            local tween = TweenService:Create(
+                Shimmer,
+                TweenInfo.new(
+                    1.8,
+                    Enum.EasingStyle.Sine,
+                    Enum.EasingDirection.InOut
+                ),
+                {
+                    Position = UDim2.new(1.05, 0, -0.3, 0)
+                }
+            )
+
+            tween:Play()
+            tween.Completed:Wait()
+
+            task.wait(1.2)
+        end
+    end)
+
+    -- Animation Glow
+    task.spawn(function()
+        while ScreenGui.Parent do
+            Glow.Position = UDim2.new(-0.35, 0, -0.15, 0)
+
+            local tween = TweenService:Create(
+                Glow,
+                TweenInfo.new(
+                    2.2,
+                    Enum.EasingStyle.Sine,
+                    Enum.EasingDirection.InOut
+                ),
+                {
+                    Position = UDim2.new(1.05, 0, -0.15, 0)
+                }
+            )
+
+            tween:Play()
+            tween.Completed:Wait()
+
+            task.wait(0.5)
+        end
+    end)
+
+    -- Animation เส้นด้านล่าง
+    task.spawn(function()
+        while ScreenGui.Parent do
+            LineGlow.Position = UDim2.new(-0.2, 0, -0.5, 0)
+
+            local tween = TweenService:Create(
+                LineGlow,
+                TweenInfo.new(
+                    1.4,
+                    Enum.EasingStyle.Sine,
+                    Enum.EasingDirection.InOut
+                ),
+                {
+                    Position = UDim2.new(1.1, 0, -0.5, 0)
+                }
+            )
+
+            tween:Play()
+            tween.Completed:Wait()
+
+            task.wait(0.3)
+        end
+    end)
+
+    -- ระบบนับเวลา
+    task.spawn(function()
+        while ScreenGui.Parent do
+            if KeyExpireTime then
+                local Remaining = KeyExpireTime - os.time()
+
+                if Remaining <= 0 then
+                    Timer.Text = "0h 00m 00s"
+                    Timer.TextColor3 = Color3.fromRGB(255, 100, 100)
+
+                    Stroke.Color = Color3.fromRGB(255, 90, 90)
+                    IconFrame.BackgroundColor3 = Color3.fromRGB(145, 45, 55)
+                    Line.BackgroundColor3 = Color3.fromRGB(255, 90, 90)
+
+                elseif Remaining <= 300 then
+                    Timer.Text = FormatTime(Remaining)
+                    Timer.TextColor3 = Color3.fromRGB(255, 190, 110)
+
+                    Stroke.Color = Color3.fromRGB(255, 170, 90)
+                    IconFrame.BackgroundColor3 = Color3.fromRGB(150, 90, 45)
+                    Line.BackgroundColor3 = Color3.fromRGB(255, 170, 90)
+
+                else
+                    Timer.Text = FormatTime(Remaining)
+                    Timer.TextColor3 = Color3.fromRGB(245, 253, 255)
+
+                    Stroke.Color = Color3.fromRGB(120, 220, 255)
+                    IconFrame.BackgroundColor3 = Color3.fromRGB(35, 135, 180)
+                    Line.BackgroundColor3 = Color3.fromRGB(100, 215, 255)
+                end
+            else
+                Timer.Text = "ไม่พบวันหมดอายุ"
+                Timer.TextColor3 = Color3.fromRGB(180, 205, 215)
+            end
+
+            task.wait(1)
+        end
+    end)
+end
+
+Ophyn.new({
+    Title = "Flexozy Key System",
+    Description = "Key System",
+    Logo = "rbxassetid://135253158468501",
+    Theme = "Dark",
+    Folder = "Flexozy_Key",
+
+    getkey = true,
+
+    Intro = "true",
+    startintro_size = 80,
+    squareintro_time = 1.2,
+
+    Changelogocolor = true,
+    Changeiconscolor = true,
+    NotifStyle = "1",
+
+    discord_link = "discord.gg/afUkge8rJe",
+    website_link = "https://api-key4258-three.vercel.app/",
+
+    Discord = "true",
+    Website = "true",
+
+    SupportedGames = {
+        [game.PlaceId] = true,
+    },
+
+    KeySystem = {
+        SaveKey = true,
+
+        API = {
+            {
+                Type = "custom",
+
+                CheckKey = function(key, ctx)
+                    key = tostring(key or ""):gsub("%s+", "")
+
+                    if key == "" then
+                        return false, "กรุณากรอกคีย์"
+                    end
+
+                    local request = ctx.Request
+
+                    if not request then
+                        return false, "ไม่พบ HTTP Request"
+                    end
+
+                    local success, response = pcall(function()
+                        return request({
+                            Url = "https://api-key4258-three.vercel.app/api/verify?key="
+                                .. HttpService:UrlEncode(key),
+                            Method = "GET"
+                        })
+                    end)
+
+                    if not success then
+                        return false, "เชื่อมต่อ API ไม่สำเร็จ"
+                    end
+
+                    if not response or response.StatusCode ~= 200 then
+                        return false, "API Error: "
+                            .. tostring(response and response.StatusCode or "Unknown")
+                    end
+
+                    local decodeSuccess, data = pcall(function()
+                        return HttpService:JSONDecode(response.Body)
+                    end)
+
+                    if not decodeSuccess or type(data) ~= "table" then
+                        return false, "ข้อมูลจาก API ไม่ถูกต้อง"
+                    end
+
+                    if data.valid == true then
+                        CurrentKey = key
+
+                        KeyExpireTime =
+                            tonumber(data.expiresAt)
+                            or tonumber(data.expireAt)
+                            or tonumber(data.expires)
+                            or tonumber(data.expiry)
+
+                        return true
+                    end
+
+                    return false, "คีย์ไม่ถูกต้อง หรือหมดอายุแล้ว"
+                end,
+
+                GetKeyLink = function(ctx)
+                    return "https://api-key4258-three.vercel.app/k/demo"
+                end,
+            }
+        }
+    },
+
+    Callback = function(key)
+        CreateKeyExpireUI()
+
+        loadstring(game:HttpGet(
+            "https://raw.githubusercontent.com/LoaderHub1990/OBF-SRC-PRO-MAX/refs/heads/main/Ride%20A%20Pet%20%E0%B8%AB%E0%B8%99%E0%B9%89%E0%B8%B2%E0%B9%80%E0%B9%80%E0%B8%A3%E0%B8%81%20No%20key"
+        ))()
+    end,
+})
