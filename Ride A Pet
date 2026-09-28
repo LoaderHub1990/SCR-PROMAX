@@ -1580,24 +1580,22 @@ function t2.value70(p25)
         v251 = true
     end
     if v251 then
-        t2.value41("ถือไข่แล้ว → วาปกลับบ้าน")
+        t2.value41("ถือไข่แล้ว → บินกลับบ้าน")
 
         if t2.value37 then
             pcall(function()
                 t2.value10:RequestStreamAroundAsync(t2.value37.Position)
             end)
-            pcall(function()
-                v241.CFrame = t2.value37
-                v241.AssemblyLinearVelocity = Vector3.zero
-                v241.AssemblyAngularVelocity = Vector3.zero
-            end)
-            task.wait(0.1)
 
-            if (v241.Position - t2.value37.Position).Magnitude > 15 then
+            if t2.value39 == "วาป (Teleport ทันที)" then
                 pcall(function()
                     v241.CFrame = t2.value37
                     v241.AssemblyLinearVelocity = Vector3.zero
                     v241.AssemblyAngularVelocity = Vector3.zero
+                end)
+            else
+                pcall(function()
+                    t2.value47(t2.value37, t2.value78)
                 end)
             end
         end
