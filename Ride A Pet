@@ -1,0 +1,2464 @@
+local t1 = {}
+local t2 = {}
+local v3 = unpack or table.unpack
+t1.value5 = nil
+t1.value2 = nil
+t1.value3 = "loadstring"
+t1.value2 = loadstring
+local _game = game
+t1.value13 = 22367117977775
+t1.value11 = 21355818788568
+t1.value5 = "HttpGet"
+t1.value2 = t1.value2(_game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+t1.value9 = "f\026\155\n\030"
+t2.value1 = t1.value2
+t1.value12 = 25237642063336
+t1.value6 = 12834712622936
+t1.value2 = t2.value1
+t1.value13 = UDim2.fromOffset
+t1.value11 = 460
+t1.value12 = t1.value13(580, t1.value11)
+-- ✅ ตั้งค่า Theme เริ่มต้น
+t1.value2:AddTheme({
+    Name = "NovaDark",
+    Accent = Color3.fromHex("#60A5FA"),
+    Background = Color3.fromHex("#0B0A10"),
+    Outline = Color3.fromHex("#2A2440"),
+    Text = Color3.fromHex("#F5F3FF"),
+    Placeholder = Color3.fromHex("#8B849F"),
+    Button = Color3.fromHex("#241B38"),
+    Icon = Color3.fromHex("#60A5FA")
+})
+
+t1.value2:SetTheme("NovaDark")
+
+-- ✅ สร้างหน้าต่าง
+local v5 = t1.value2.CreateWindow(t1.value2, {
+    Title = "Flexozy",
+    Icon = "rbxassetid://116797420088155",
+    Author = "Flexozy",
+    Folder = "Flexozy",
+    Size = t1.value12,
+    Transparent = true,
+    Theme = "NovaDark",
+    User = {
+        Enabled = true,
+        Anonymous = false
+    }
+})
+
+-- 🌈 สีวนสลับไปมา (Rainbow cycle)
+task.spawn(function()
+    local colors = {
+        Color3.fromHex("#60A5FA"), -- ฟ้า
+        Color3.fromHex("#A78BFA"), -- ม่วง
+        Color3.fromHex("#F472B6"), -- ชมพู
+        Color3.fromHex("#FBBF24"), -- เหลือง
+        Color3.fromHex("#34D399"), -- เขียว
+    }
+
+    local i = 0
+    local interval = 1.2 -- ปรับความเร็วการวนสี (วินาที)
+
+    while task.wait(interval) do
+        i = (i % #colors) + 1
+        local c = colors[i]
+
+        pcall(function()
+            t1.value2:AddTheme({
+                Name = "NovaDark",
+                Accent = c,
+                Background = Color3.fromHex("#0B0A10"),
+                Outline = Color3.fromHex("#2A2440"),
+                Text = Color3.fromHex("#F5F3FF"),
+                Placeholder = Color3.fromHex("#8B849F"),
+                Button = Color3.fromHex("#241B38"),
+                Icon = c
+            })
+            t1.value2:SetTheme("NovaDark")
+        end)
+    end
+end)
+
+-- FPS / Version display: isolated and protected so it cannot stop the main UI from loading.
+do
+	local ok, fpsTag = pcall(function()
+		return v5:Tag({
+			Title = "FPS: --",
+			Icon = "gauge",
+			Color = Color3.fromHex("#7C3AED"),
+			Radius = 7
+		})
+	end)
+
+	if ok and fpsTag then
+		task.spawn(function()
+			local RunService = game:GetService("RunService")
+			local frames = 0
+			local elapsed = 0
+
+			while fpsTag and fpsTag.SetTitle do
+				local connection
+				local connected = true
+
+				connection = RunService.Heartbeat:Connect(function(dt)
+					if not connected then
+						return
+					end
+					frames += 1
+					elapsed += dt
+				end)
+
+				task.wait(1)
+				connected = false
+				if connection then
+					connection:Disconnect()
+				end
+
+				local fps = math.floor(frames / math.max(elapsed, 0.001) + 0.5)
+				pcall(function()
+					fpsTag:SetTitle("FPS: " .. tostring(fps))
+				end)
+			end
+		end)
+	end
+end
+
+local Players = game:GetService("Players")
+t2.value2 = game:GetService("ReplicatedStorage")
+t1.value5 = game:GetService("Workspace")
+t1.value4 = "game"
+t1.value10 = 29523637089716
+t1.value11 = 18446715576717
+t2.value3 = t1.value5
+t1.value4 = game:GetService("TweenService")
+t2.value4 = t1.value4
+t1.value4 = game
+t1.value10 = "\018\n\228\017\189\132\154"
+t1.value7 = "GetService"
+t1.value7 = t1.value4:GetService("CoreGui")
+t2.value5 = t1.value7
+t1.value7 = game
+t1.value9 = "GetService"
+t1.value12 = "\001\255\r~\1641W\169\153\199"
+t1.value9 = t1.value7.GetService
+t1.value9 = t1.value9(t1.value7, "GuiService")
+t2.value6 = t1.value9
+t1.value9 = game
+t1.value6 = t1.value9.GetService
+t1.value6 = t1.value6(t1.value9, "RunService")
+t2.value7 = t1.value6
+t1.value6 = game
+t1.value8 = "GetService"
+t1.value11 = "\\G\003\170\191\231r\241\149\195\253"
+t1.value8 = t1.value6:GetService("UserInputService")
+t2.value8 = t1.value8
+t2.value9 = game:GetService("HttpService")
+t2.value10 = Players.LocalPlayer
+t2.value11 = "RVXHub_RideAPetConfig.json"
+t2.value12 = (function()
+    local t3 = {
+		EspEnabled = false,
+		SelectedEggNames = {},
+		SelectedEspEggNames = {},
+		SelectedPlaceEggNames = {},
+		PlaceMode = "วางเฉพาะที่เลือก",
+		AllFarmSelected = false,
+		AllEspSelected = false,
+		AllPlaceSelected = false
+	}
+    local _isfile = isfile
+
+    if _isfile then
+        _isfile = isfile(t2.value11)
+    end
+
+    if _isfile then
+        local ok, result = pcall(function()
+            local value9 = t2.value9
+            local t4 = { readfile(t2.value11) }
+
+            return value9:JSONDecode(v3(t4))
+        end)
+
+        if ok then
+            ok = type(result) == "table"
+        end
+
+        if ok then
+            if type(result.EspEnabled) == "boolean" then
+                t3.EspEnabled = result.EspEnabled
+            end
+
+            if type(result.SelectedEggNames) == "table" then
+                t3.SelectedEggNames = result.SelectedEggNames
+            end
+
+            if type(result.SelectedEspEggNames) == "table" then
+                t3.SelectedEspEggNames = result.SelectedEspEggNames
+            end
+
+            if type(result.SelectedPlaceEggNames) == "table" then
+                t3.SelectedPlaceEggNames = result.SelectedPlaceEggNames
+            end
+
+            if type(result.PlaceMode) == "string" then
+                t3.PlaceMode = result.PlaceMode
+            end
+
+            if type(result.AllFarmSelected) == "boolean" then
+                t3.AllFarmSelected = result.AllFarmSelected
+            end
+
+            if type(result.AllEspSelected) == "boolean" then
+                t3.AllEspSelected = result.AllEspSelected
+            end
+
+            if type(result.AllPlaceSelected) == "boolean" then
+                t3.AllPlaceSelected = result.AllPlaceSelected
+            end
+        end
+    end
+
+    return t3
+end)()
+t1.value11 = t2.value2:WaitForChild("Remotes", 10)
+local value11 = t1.value11
+local value1 = t1.value1
+t1.value12 = value11
+if t1.value11 then
+    t1.value12 = t1.value11:WaitForChild("Game", 10)
+end
+local value12 = t1.value12
+if t1.value12 then
+    value12 = t1.value12:WaitForChild("EggPickup", 10)
+end
+t1.value1 = value1
+t2.value13 = value12
+t2.value14 = {}
+pcall(function()
+    t2.value14 = require(t2.value2.GameData.Eggs)
+end)
+function t2.value15(p1)
+    local _tostring = tostring
+
+    if not p1 then
+        p1 = ""
+    end
+
+    local v83 = _tostring(p1)
+    local v84 = v83:gsub("%s*Egg%s*$", ""):gsub("^%s+", ""):gsub("%s+$", "")
+    local v85 = t2.value14[v83]
+
+    if not v85 then
+        v85 = t2.value14[v84]
+
+        if not v85 then
+            v85 = t2.value14[v84 .. " Egg"]
+        end
+    end
+
+    local v86 = not v85
+
+    if v86 then
+        v86 = type(t2.value14) == "table"
+    end
+
+    if v86 then
+        for k, v in pairs(t2.value14) do
+            local v89 = k
+
+            if tostring(v89):lower() == v83:lower() or tostring(v89):lower() == v84:lower() then
+                v85 = v
+
+                break
+            end
+        end
+    end
+
+    if type(v85) == "table" then
+        for _, v in ipairs({
+			"Image",
+			"ImageId",
+			"Icon",
+			"IconId",
+			"Thumbnail",
+			"ThumbnailId",
+			"Texture",
+			"TextureId"
+		}) do
+            local v92 = v85[v]
+
+            if v92 == nil then
+                continue
+            end
+
+            local str = tostring(v92)
+
+            if str ~= "" then
+                if str:find("rbxassetid://", 1, true) == 1 or str:find("rbxthumb://", 1, true) == 1 then
+                    return str
+                end
+
+                local v94 = str:match("(%d+)")
+
+                if not v94 then
+                    continue
+                end
+
+                return "rbxassetid://" .. v94
+            end
+        end
+    end
+
+    return nil
+end
+t2.value16 = "All / ทั้งหมด (เลือกไข่ทุกชนิด)"
+function t2.value17(p2)
+    if type(p2) ~= "string" then
+        return false
+    end
+
+    local v96 = p2:find("ทั้งหมด", 1, true) ~= nil
+
+    if not v96 then
+        v96 = p2:lower():find("all", 1, true) ~= nil
+    end
+
+    return v96
+end
+function t2.value18(p3)
+    if type(p3) == "table" then
+        local p3Title = p3.Title
+
+        if not p3Title then
+            p3Title = p3.Value or p3.Name
+        end
+
+        return p3Title
+    end
+
+    return p3
+end
+t2.value19 = {
+	ethereal = 1000000000000,
+	divine = 1000000000,
+	mythic = 1000000,
+	legendary = 10000,
+	epic = 1000,
+	rare = 100,
+	uncommon = 10,
+	common = 1
+}
+local t5 = {
+	priority = 1000000000009,
+	rarity = "Ethereal"
+}
+local t6 = {
+	priority = 1000000000008,
+	rarity = "Ethereal"
+}
+local t7 = {
+	priority = 1000000000007,
+	rarity = "Ethereal"
+}
+local t8 = {
+	priority = 1000000000006,
+	rarity = "Ethereal"
+}
+local t9 = {
+	priority = 1000000000005,
+	rarity = "Ethereal"
+}
+local t10 = {
+	priority = 1000000000004,
+	rarity = "Ethereal"
+}
+local t11 = {
+	priority = 1000000000003,
+	rarity = "Ethereal"
+}
+local t12 = {
+	priority = 1000000009,
+	rarity = "Divine"
+}
+local t13 = {
+	priority = 1000000008,
+	rarity = "Divine"
+}
+local t14 = {
+	priority = 1000000007,
+	rarity = "Divine"
+}
+local t15 = {
+	priority = 1000009,
+	rarity = "Mythic"
+}
+local t16 = {
+	priority = 1000008,
+	rarity = "Mythic"
+}
+local t17 = {
+	priority = 1000007,
+	rarity = "Mythic"
+}
+local t18 = {
+	priority = 1000006,
+	rarity = "Mythic"
+}
+local t19 = {
+	priority = 1000005,
+	rarity = "Mythic"
+}
+local t20 = {
+	priority = 1000004,
+	rarity = "Mythic"
+}
+local t21 = {
+	priority = 1000003,
+	rarity = "Mythic"
+}
+local t22 = {
+	priority = 80000,
+	rarity = "Legendary"
+}
+local t23 = {
+	priority = 30000,
+	rarity = "Legendary"
+}
+local t24 = {
+	priority = 10000,
+	rarity = "Legendary"
+}
+local t25 = {
+	priority = 3000,
+	rarity = "Epic"
+}
+local t26 = {
+	priority = 1000,
+	rarity = "Epic"
+}
+local t27 = {
+	priority = 750,
+	rarity = "Epic"
+}
+local t28 = {
+	priority = 500,
+	rarity = "Epic"
+}
+local t29 = {
+	priority = 200,
+	rarity = "Rare"
+}
+local t30 = {
+	priority = 100,
+	rarity = "Rare"
+}
+local t31 = {
+	priority = 50,
+	rarity = "Rare"
+}
+local t32 = {
+	priority = 30,
+	rarity = "Rare"
+}
+local t33 = {
+	priority = 5,
+	rarity = "Common"
+}
+local t34 = {
+	priority = 1,
+	rarity = "Common"
+}
+t2.value20 = {
+	["Cherub Egg"] = t5,
+	["Asteroid Egg"] = t6,
+	["Solaris Egg"] = t7,
+	["Blackhole Egg"] = t8,
+	["Dragon Egg"] = t9,
+	["Volcanic Egg"] = t10,
+	["Giant Egg"] = t11,
+	["Galaxy Egg"] = t12,
+	["Aurora Egg"] = t13,
+	["Bloom Egg"] = t14,
+	["Tidal Egg"] = t15,
+	["Soul Egg"] = t16,
+	["Sinister Egg"] = t17,
+	["Flaming Egg"] = t18,
+	["Dominus Egg"] = t19,
+	["Skull Egg"] = t20,
+	["Crystal Egg"] = t21,
+	["Diamond Egg"] = t22,
+	["Golden Egg"] = t23,
+	["Glass Egg"] = t24,
+	["Ice Egg"] = t25,
+	["Slime Egg"] = t26,
+	["Flower Egg"] = t27,
+	["Mushroom Egg"] = t28,
+	["Leaf Egg"] = t29,
+	["Stone Egg"] = t30,
+	["Easter Egg"] = t31,
+	["Cracked Egg"] = t32,
+	["Brown Egg"] = t33,
+	["White Egg"] = t34
+}
+function t2.value21(p4)
+    return tostring(p4):gsub("%s+", ""):lower()
+end
+t2.value22 = {}
+for k, v in pairs(t2.value20) do
+    t2.value22[t2.value21(k)] = v
+end
+local function v42(p5)
+    local _tostring = tostring
+
+    if not p5 then
+        p5 = ""
+    end
+
+    local v102 = _tostring(p5)
+    local v103 = t2.value22[t2.value21(v102)]
+
+    if v103 then
+        return v103
+    end
+
+    local v104 = t2.value14[v102]
+
+    if not v104 then
+        v104 = t2.value14[v102:gsub("%s*Egg%s*$", "")]
+
+        if not v104 then
+            v104 = t2.value14[v102 .. " Egg"]
+        end
+    end
+
+    local v105 = type(v104) == "table" and v104.Rarity
+
+    if not v105 then
+        v105 = "Unknown"
+    end
+
+    return {
+		priority = t2.value19[v105:lower()] or 500,
+		rarity = v105
+	}
+end
+t2.value23 = {}
+t2.value24 = nil
+t2.value24 = {}
+function t2.value25()
+    t2.value23 = {}
+    t2.value24 = {}
+    local t35 = {}
+    local RenderedEggs = t2.value3:FindFirstChild("RenderedEggs")
+    if RenderedEggs then
+        for _, child in ipairs(RenderedEggs:GetChildren()) do
+            if child:IsA("Model") and not t35[child.Name] then
+                t35[child.Name] = true
+            end
+        end
+    end
+    if type(t2.value14) == "table" then
+        for k, _ in pairs(t2.value14) do
+            local str = tostring(k)
+
+            if not str:lower():find("egg") then
+                str ..= " Egg"
+            end
+
+            t35[str] = true
+        end
+    end
+    for k, _ in pairs(t2.value20) do
+        t35[k] = true
+    end
+    local t36 = {}
+    for v118 in pairs(t35) do
+
+        local v119 = v42(v118)
+        local v120 = v119 and v119.priority or 0
+        local v121 = v119 and v119.rarity
+
+        if not v121 then
+            v121 = "Unknown"
+        end
+
+        local v122 = v118:gsub("%s*Egg%s*$", "")
+        local v123 = string.format("%s [%s]", v122, v121)
+        local insert = table.insert
+        local v125 = t2.value15(v118)
+
+        insert(t36, {
+			label = v123,
+			rawName = v118,
+			priority = v120,
+			icon = v125
+		})
+        t2.value24[v123] = v118
+    end
+    table.sort(t36, function(p6, p7)
+        if p6.priority ~= p7.priority then
+            return p6.priority > p7.priority
+        end
+
+        return p6.rawName < p7.rawName
+    end)
+    table.insert(t2.value23, {
+		Title = t2.value16,
+		Icon = "check-check"
+	})
+    for _, v in ipairs(t36) do
+        local insert = table.insert
+        local value23 = t2.value23
+        local label = v.label
+        local v131 = v.icon or "egg"
+
+        insert(value23, {
+			Title = label,
+			Icon = v131
+		})
+    end
+end
+t2.value25()
+t2.value26 = {}
+for _, v in ipairs(t2.value12.SelectedEggNames or {}) do
+    t2.value26[t2.value21(v)] = true
+end
+t2.value27 = {}
+for v47, v48 in ipairs(t2.value12.SelectedEspEggNames or {}) do
+
+    t2.value27[t2.value21(v48)] = true
+end
+t2.value28 = {}
+for _, v in ipairs(t2.value12.SelectedPlaceEggNames or {}) do
+    t2.value28[t2.value21(v)] = true
+end
+t2.value29 = t2.value12.AllFarmSelected or false
+t2.value30 = t2.value12.AllEspSelected or false
+t2.value31 = t2.value12.AllPlaceSelected or false
+t2.value32 = false
+t2.value33 = false
+t2.value34 = t2.value12.PlaceMode or "วางเฉพาะที่เลือก"
+t2.value35 = false
+t1.value15 = "\215\182\249\193ϒfsi\187\v\138\190"
+t2.value36 = {}
+t2.value37 = nil
+t2.value38 = nil
+t1.value14 = 32005216287287
+t2.value39 = "วาป (Teleport ทันที)"
+t2.value78 = 45
+t2.value40 = nil
+function t2.value41(p8)
+    if t2.value40 then
+        pcall(function()
+            t2.value40:SetDesc(p8)
+        end)
+    end
+end
+function t2.value42(p9)
+    if writefile then
+        pcall(function()
+            writefile(t2.value11, p9)
+        end)
+    end
+end
+function t1.value14()
+    local t37 = {}
+
+    for k, _ in pairs(t2.value24) do
+        local v147 = k
+
+        if t2.value26[t2.value21(v147)] then
+            table.insert(t37, v147)
+        end
+    end
+
+    local t38 = {}
+
+    for k, _ in pairs(t2.value24) do
+        local v151 = k
+
+        if t2.value27[t2.value21(v151)] then
+            table.insert(t38, v151)
+        end
+    end
+
+    local t39 = {}
+
+    for k, _ in pairs(t2.value24) do
+        local v155 = k
+
+        if t2.value28[t2.value21(v155)] then
+            table.insert(t39, v155)
+        end
+    end
+
+    t2.value42({
+		EspEnabled = t2.value12.EspEnabled,
+		SelectedEggNames = t37,
+		SelectedEspEggNames = t38,
+		SelectedPlaceEggNames = t39,
+		PlaceMode = t2.value34,
+		AllFarmSelected = t2.value29,
+		AllEspSelected = t2.value30,
+		AllPlaceSelected = t2.value31
+	})
+end
+t2.value43 = t1.value14
+local value7 = t2.value7
+function t1.value15(p10)
+    if t2.value29 then
+        return true
+    end
+
+    return t2.value26[t2.value21(p10)] == true
+end
+t1.value14 = value7.RenderStepped
+t1.value14:Connect(function()
+    if t2.value32 then
+        pcall(function()
+            t2.value6:SetMenuIsOpen(false)
+        end)
+
+        local PlayerGui = t2.value10:FindFirstChild("PlayerGui")
+
+        if PlayerGui then
+            local GetChildren = PlayerGui.GetChildren
+            local _ipairs = ipairs
+            for _, v161 in _ipairs(GetChildren(PlayerGui)) do
+                local v162 = v161.Name == "StreamingPauseGui"
+
+                if not v162 then
+                    v162 = v161:FindFirstChild("PauseFrame")
+
+                    if not v162 then
+                        v162 = v161.Name:find("Pause")
+                    end
+                end
+
+                if v162 then
+                    v161.Enabled = false
+                end
+            end
+        end
+
+        local RobloxGui = t2.value5:FindFirstChild("RobloxGui")
+
+        if RobloxGui then
+            local StreamingPauseGui = RobloxGui:FindFirstChild("StreamingPauseGui")
+
+            if StreamingPauseGui then
+                StreamingPauseGui.Enabled = false
+            end
+        end
+    end
+end)
+t2.value44 = nil
+t2.value45 = nil
+t2.value45 = nil
+function t2.value46(p11)
+    if p11 then
+        if not t2.value45 then
+            t2.value45 = t2.value7.Stepped:Connect(function()
+                local Character = t2.value10.Character
+
+                if Character then
+                    for _, child in ipairs(Character:GetChildren()) do
+                        if child:IsA("BasePart") then
+                            child.CanCollide = false
+                        end
+                    end
+                end
+            end)
+
+            return
+        end
+    else
+        if t2.value45 then
+            t2.value45:Disconnect()
+            t2.value45 = nil
+        end
+
+        local Character = t2.value10.Character
+
+        if Character then
+            for _, child in ipairs(Character:GetChildren()) do
+                if child:IsA("BasePart") then
+                    child.CanCollide = true
+                end
+            end
+        end
+    end
+end
+function t2.value47(p12, p13)
+    local Character = t2.value10.Character
+
+    if Character then
+        Character = Character:FindFirstChild("HumanoidRootPart")
+    end
+
+    if not Character then
+        return
+    end
+
+    local v177 = math.clamp((Character.Position - p12.Position).Magnitude / (p13 or 40), 0.3, 3)
+    local tweenInfo = TweenInfo.new(v177, Enum.EasingStyle.Linear)
+    local v179 = t2.value4:Create(Character, tweenInfo, {
+		CFrame = p12
+	})
+
+    v179:Play()
+    v179.Completed:Wait()
+end
+function t2.value48()
+    local Character = t2.value10.Character
+    local v181 = Character and Character:FindFirstChild("HumanoidRootPart")
+
+    if v181 then
+        t2.value37 = v181.CFrame
+
+        return true
+    end
+
+    return false
+end
+function t2.value49(p14)
+    if p14 then
+        p14 = p14:FindFirstChild("Pickup", true)
+    end
+
+    return p14
+end
+t2.value50 = nil
+t2.value51 = t1.value15
+function t2.value52(p15)
+    if t2.value30 then
+        return true
+    end
+
+    return t2.value27[t2.value21(p15)] == true
+end
+t2.value53 = nil
+function t2.value54()
+    local RenderedEggs = t2.value3:FindFirstChild("RenderedEggs")
+
+    if not RenderedEggs then
+        return {}
+    end
+
+    local t40 = {}
+
+    for _, child in ipairs(RenderedEggs:GetChildren()) do
+        if child:IsA("Model") then
+            local v191 = t2.value49(child)
+
+            if v191 and v191.Parent then
+                local v192 = v42(child.Name)
+                local v193 = v192 and v192.priority or 1
+
+                if v192 then
+                    v192 = v192.rarity
+                end
+
+                if not v192 then
+                    v192 = "Unknown"
+                end
+
+                if t2.value51(child.Name) then
+                    local insert = table.insert
+                    local childName = child.Name
+
+                    insert(t40, {
+						model = child,
+						name = childName,
+						prompt = v191,
+						priority = v193,
+						rarity = v192
+					})
+                end
+            end
+        end
+    end
+
+    table.sort(t40, function(p16, p17)
+        return p16.priority > p17.priority
+    end)
+
+    return t40
+end
+t2.value50 = nil
+t2.value44 = nil
+t2.value38 = nil
+t2.value53 = 0
+function t2.value55(p18)
+    local v139 = t2.value21(p18)
+
+    return t2.value22[v139] ~= nil or v139:find("egg", 1, true) ~= nil
+end
+local function v52()
+    local t41 = {}
+    local t42 = {}
+    local Backpack = t2.value10:FindFirstChildOfClass("Backpack")
+    local Character = t2.value10.Character
+
+    for _, v in ipairs({
+		Backpack,
+		Character
+	}) do
+        if v then
+            local _ipairs = ipairs
+            for _, v231 in _ipairs(v:GetChildren()) do
+                local v232 = v231:IsA("Tool")
+
+                if v232 then
+                    v232 = not t42[v231]
+
+                    if v232 then
+                        v232 = t2.value55(v231.Name)
+                    end
+                end
+
+                if v232 then
+                    t42[v231] = true
+                    table.insert(t41, v231)
+                end
+            end
+        end
+    end
+
+    table.sort(t41, function(p19, p20)
+        local v386 = v42(p19.Name)
+        local v387 = v42(p20.Name)
+
+        if v386 then
+            v386 = v386.priority
+        end
+
+        return (v386 or 0) > (v387 and v387.priority or 0)
+    end)
+
+    return t41
+end
+function t2.value56(p21)
+    if t2.value31 then
+        return true
+    end
+
+    local v133 = t2.value21(p21)
+
+    if t2.value28[v133] == true then
+        return true
+    end
+
+    for k, v in pairs(t2.value28) do
+        local v136 = v
+        local v137 = k
+
+        if v then
+            v136 = v137 == v133
+
+            if not v136 then
+                v136 = v133 == v137:gsub("%s+", "")
+            end
+        end
+
+        if v136 then
+            return true
+        end
+    end
+
+    return false
+end
+function t2.value57(p22)
+    if not p22 or not p22.Parent then
+        return false
+    end
+
+    local value36 = t2.value36
+
+    if value36 then
+        value36 = t2.value36[t2.value21(p22.Name)]
+    end
+
+    if value36 then
+        return false
+    end
+
+    if t2.value34 == "วางทั้งหมด" then
+        return true
+    end
+
+    return t2.value56(p22.Name)
+end
+t2.value58 = nil
+function t2.value58()
+    local value44 = t2.value44
+    if value44 then
+        value44 = t2.value44.Parent
+    end
+    if value44 then
+        return t2.value44
+    end
+    local Plots = t2.value3:FindFirstChild("Plots")
+    if not Plots then
+        return nil
+    end
+    local value37 = t2.value37
+    if value37 then
+        value37 = t2.value37.Position
+    end
+    local Character = t2.value10.Character
+    local v213 = Character and Character:FindFirstChild("HumanoidRootPart")
+    if not value37 then
+        if v213 then
+            v213 = v213.Position
+        end
+
+        value37 = v213
+    end
+    if not value37 then
+        return nil
+    end
+    local n1 = 1e999
+    local v215
+    for _, child in ipairs(Plots:GetChildren()) do
+        local v218 = child
+        local Eggs = v218:FindFirstChild("Eggs", true)
+
+        if Eggs and Eggs:IsA("Folder") then
+            local ok, result = pcall(function()
+                return v218:GetPivot().Position
+            end)
+
+            if ok and result then
+                local Magnitude = (result - value37).Magnitude
+
+                if Magnitude < n1 then
+                    n1 = Magnitude
+                    v215 = Eggs
+                end
+            end
+        end
+    end
+    t2.value44 = v215
+
+    return v215
+end
+function t2.value59()
+    local v235 = t2.value58()
+
+    if not v235 then
+        return 0
+    end
+
+    local n2 = 0
+
+    for _, child in ipairs(v235:GetChildren()) do
+        if child:IsA("Model") then
+            n2 += 1
+        end
+    end
+
+    return n2
+end
+function t2.value60()
+    local timestamp = tick()
+
+    if timestamp - t2.value53 < 0.7 and t2.value50 then
+        return t2.value50
+    end
+
+    t2.value53 = timestamp
+
+    local value38 = t2.value38
+
+    if value38 then
+        value38 = t2.value38.Parent
+    end
+
+    if value38 then
+        local v198, v199 = tostring(t2.value38.Text or ""):match("[Mm][Aa][Xx]%s*(%d+)%s*/%s*(%d+)")
+
+        if v198 and v199 then
+            t2.value50 = tonumber(v199)
+
+            return t2.value50
+        end
+    end
+
+    local PlayerGui = t2.value10:FindFirstChildOfClass("PlayerGui")
+
+    if not PlayerGui then
+        return t2.value50
+    end
+
+    local GetDescendants = PlayerGui.GetDescendants
+
+    for _, v in ipairs(GetDescendants(PlayerGui)) do
+        local v204 = v:IsA("TextLabel")
+
+        if not v204 then
+            v204 = v:IsA("TextButton")
+
+            if not v204 then
+                v204 = v:IsA("TextBox")
+            end
+        end
+
+        if not v204 then
+            continue
+        end
+
+        local str = tostring(v.Text or "")
+        local v206 = str:lower()
+        local v207, v208 = str:match("[Mm][Aa][Xx]%s*(%d+)%s*/%s*(%d+)")
+
+        if v207 then
+            v207 = v208
+
+            if v208 then
+                v207 = v206:find("egg", 1, true) and v206:find("plot", 1, true)
+            end
+        end
+
+        if v207 then
+            t2.value38 = v
+            t2.value50 = tonumber(v208)
+
+            return t2.value50
+        end
+    end
+
+    return t2.value50
+end
+function t2.value61()
+    local v257 = t2.value60()
+    local v258 = t2.value59()
+
+    return v257 ~= nil and v257 <= v258, v258, v257
+end
+t2.value62 = 0
+t2.value63 = nil
+function t2.value64()
+    local v259 = t2.value58()
+
+    return v259 and v259.Parent
+end
+function t2.value65()
+    local v260 = t2.value64()
+
+    if not v260 then
+        return nil
+    end
+
+    local ok, result = pcall(function()
+        return v260:GetPivot()
+    end)
+    local v263 = not ok
+
+    if not v263 then
+        v263 = not result
+    end
+
+    if v263 then
+        return nil
+    end
+
+    local ok2, result2 = pcall(function()
+        return v260:GetExtentsSize()
+    end)
+    local v266 = not ok2
+
+    if not v266 then
+        v266 = not result2
+    end
+
+    if v266 then
+        result2 = Vector3.new(40, 10, 40)
+    end
+
+    local v267 = math.max(6, (math.min(result2.X * 0.5 - 3, 24)))
+    local v268 = math.max(6, (math.min(result2.Z * 0.5 - 3, 24)))
+    local n3 = 4.5
+    local t43 = {}
+    local v271 = math.max(1, math.floor(v268 * 2 / n3))
+    local max = math.max
+    local v273 = max(1, (math.floor(v267 * 2 / n3)))
+
+    for i = 0, v271 - 1 do
+        local v275 = i * n3
+        local v276 = -v268 + n3 * 0.5 + v275
+
+        max = v276
+
+        for j = 0, v273 - 1 do
+            local _table = table
+            local v279 = -v267 + n3 * 0.5 + j * n3
+
+            max = _table.insert
+
+            local t44 = { Vector3.new(v279, 1.5, v276) }
+
+            max(t43, result:PointToWorldSpace(v3(t44)))
+        end
+    end
+
+    t2.value63 = max
+    t2.value62 = 0
+
+    return t43
+end
+local function v53()
+    local v281 = t2.value63 or t2.value65()
+
+    if not v281 or #v281 == 0 then
+        return nil
+    end
+
+    local t45 = {}
+    local v283 = t2.value58()
+
+    if v283 then
+        for _, child in ipairs(v283:GetChildren()) do
+            local v286 = child
+
+            if v286:IsA("Model") then
+                local ok, result = pcall(function()
+                    return v286:GetPivot().Position
+                end)
+
+                if ok and result then
+                    for i, v in ipairs(v281) do
+                        if (result - v).Magnitude < 2.2 then
+                            t45[i] = true
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    for _ = 1, #v281 do
+        t2.value62 = t2.value62 % #v281 + 1
+
+        if not t45[t2.value62] then
+            return v281[t2.value62]
+        end
+    end
+
+    return nil
+end
+function t2.value66(p23)
+    if not p23 then
+        return false
+    end
+
+    local CurrentCamera = t2.value3.CurrentCamera
+
+    if not CurrentCamera then
+        return false
+    end
+
+    local v168, v169 = CurrentCamera:WorldToViewportPoint(p23)
+
+    if not v169 or v168.Z <= 0 then
+        return false
+    end
+
+    local v170 = math.floor(v168.X)
+    local v171 = math.floor(v168.Y)
+
+    if pcall(function()
+        game:GetService("VirtualInputManager"):SendMouseMoveEvent(v170, v171, 0, game)
+    end) then
+        return true
+    end
+
+    local _mousemoverel = mousemoverel
+
+    if _mousemoverel then
+        _mousemoverel = t2.value8
+
+        if _mousemoverel then
+            _mousemoverel = t2.value8.GetMouseLocation
+        end
+    end
+
+    if _mousemoverel then
+        local MouseLocation = t2.value8:GetMouseLocation()
+
+        pcall(function()
+            mousemoverel(v170 - MouseLocation.X, v171 - MouseLocation.Y)
+        end)
+
+        return true
+    end
+
+    return false
+end
+function t2.value67(p24)
+    local v293 = not p24
+
+    if not v293 then
+        v293 = not p24.Parent
+    end
+
+    if v293 then
+        return false
+    end
+
+    local Character = t2.value10.Character
+
+    if Character then
+        Character = Character:FindFirstChildOfClass("Humanoid")
+    end
+
+    local v295 = Character
+
+    if not v295 then
+        return false
+    end
+
+    local v296 = t2.value59()
+
+    if t2.value61() then
+        return false
+    end
+
+    local v297 = v53()
+
+    if v297 then
+        t2.value66(v297)
+        task.wait(0.08)
+    end
+
+    if not pcall(function()
+        v295:EquipTool(p24)
+    end) then
+        return false
+    end
+
+    task.wait(0.12)
+
+    if v297 then
+        t2.value66(v297)
+        task.wait(0.05)
+    end
+
+    if not pcall(function()
+        p24:Activate()
+    end) then
+        return false
+    end
+
+    local v298 = tick() + 1.2
+
+    while v298 > tick() do
+        if not t2.value33 then
+            return false
+        end
+
+        local v299, v300 = t2.value61()
+
+        if v296 < v300 then
+            return true
+        end
+
+        if v299 then
+            return false
+        end
+
+        task.wait(0.15)
+    end
+
+    return false
+end
+function t2.value68()
+    if not t2.value37 then
+        return true
+    end
+
+    local Character = t2.value10.Character
+    local v142 = Character and Character:FindFirstChild("HumanoidRootPart")
+
+    if not v142 then
+        return false
+    end
+
+    return (v142.Position - t2.value37.Position).Magnitude <= 35
+end
+function t2.value69()
+    local value35 = t2.value35
+
+    if not value35 then
+        value35 = not t2.value33 or not t2.value68()
+    end
+
+    if value35 then
+        return
+    end
+
+    local v302, v303, v304 = t2.value61()
+
+    if v302 then
+        t2.value41(string.format("พื้นที่ในสวนเต็ม (%d/%d) — หยุดการวาง", v303, v304))
+
+        return
+    end
+
+    local v305 = v52()
+    local n4 = 0
+
+    for _, v in ipairs(v305) do
+        if not t2.value33 or t2.value61() then
+            break
+        end
+
+        if t2.value57(v) then
+            t2.value41("กำลังวางไข่: " .. v.Name)
+
+            if t2.value67(v) then
+                n4 += 1
+
+                if t2.value36 then
+                    t2.value36[t2.value21(v.Name)] = nil
+                end
+            elseif t2.value36 then
+                t2.value36[t2.value21(v.Name)] = true
+            end
+        end
+    end
+
+    local v309, v310, v311 = t2.value61()
+
+    if v309 then
+        t2.value41(string.format("พื้นที่ในสวนเต็ม (%d/%d) — หยุดการวาง", v310, v311))
+
+        return
+    end
+
+    if n4 > 0 then
+        t2.value41("วางไข่สำเร็จ " .. n4 .. " ฟอง")
+
+        return
+    end
+
+    t2.value41("รอช่องว่างในสวน...")
+end
+function t2.value70(p25)
+    local Character = t2.value10.Character
+    local v241 = Character and Character:FindFirstChild("HumanoidRootPart")
+    local v242 = not v241
+    if not v242 then
+        v242 = not p25
+
+        if not v242 then
+            v242 = not p25.model
+
+            if not v242 then
+                v242 = not p25.model.Parent
+            end
+        end
+    end
+    if v242 then
+        return false
+    end
+    if not t2.value37 then
+        t2.value48()
+    end
+    t2.value46(true)
+    local vector3 = Vector3.new(0, 4.5, 0)
+    local prompt = p25.prompt
+    local promptParent
+    local v246
+    local v247 = prompt
+    if v247 then
+        v247 = prompt.Parent
+    end
+    if v247 then
+        promptParent = prompt.Parent
+
+        if promptParent:IsA("BasePart") then
+            promptParent = prompt.Parent
+            v246 = promptParent
+        else
+            local v248 = prompt.Parent:IsA("Attachment")
+
+            if v248 then
+                v248 = prompt.Parent.Parent
+
+                if v248 then
+                    v248 = prompt.Parent.Parent:IsA("BasePart")
+                end
+            end
+
+            if v248 then
+                v246 = prompt.Parent.Parent
+            end
+        end
+    end
+    if v246 then
+        v246 = v246.Position
+    end
+    if not v246 then
+        v246 = p25.model:GetPivot().Position
+    end
+    local cFrame = CFrame.new(v246 + vector3)
+    t2.value41("วาปไป " .. p25.name)
+    if t2.value39 == "วาป (Teleport ทันที)" then
+        v241.CFrame = cFrame
+        v241.AssemblyLinearVelocity = Vector3.zero
+        v241.AssemblyAngularVelocity = Vector3.zero
+    else
+        t2.value47(cFrame, t2.value78)
+    end
+    task.wait(0.1)
+    local timestamp = tick()
+    local v251 = false
+    t2.value41("กำลังกดหยิบ " .. p25.name)
+    while tick() - timestamp < 2.5 do
+        local v252 = not p25.model
+
+        if not v252 then
+            v252 = not p25.model.Parent
+        end
+
+        if v252 then
+            v251 = true
+
+            break
+        end
+
+        local v253 = prompt
+
+        if v253 then
+            v253 = prompt.Parent
+        end
+
+        if v253 then
+            local _fireproximityprompt = fireproximityprompt
+
+            if not _fireproximityprompt then
+                _fireproximityprompt = getgenv
+
+                if _fireproximityprompt then
+                    _fireproximityprompt = getgenv().fireproximityprompt
+                end
+            end
+
+            local v255 = _fireproximityprompt
+
+            if v255 then
+                pcall(function()
+                    v255(prompt, 1, true)
+                end)
+            else
+                pcall(function()
+                    prompt:InputHoldBegin()
+                end)
+                task.wait(0.05)
+                pcall(function()
+                    prompt:InputHoldEnd()
+                end)
+            end
+        end
+
+        if t2.value13 then
+            pcall(function()
+                t2.value13:FireServer(p25.model)
+            end)
+        end
+
+        task.wait(0.1)
+    end
+    local v256 = not p25.model
+    if not v256 then
+        v256 = not p25.model.Parent
+    end
+    if v256 then
+        v251 = true
+    end
+    if v251 then
+        t2.value41("ถือไข่แล้ว → วาปกลับบ้าน")
+
+        if t2.value37 then
+            pcall(function()
+                t2.value10:RequestStreamAroundAsync(t2.value37.Position)
+            end)
+            pcall(function()
+                v241.CFrame = t2.value37
+                v241.AssemblyLinearVelocity = Vector3.zero
+                v241.AssemblyAngularVelocity = Vector3.zero
+            end)
+            task.wait(0.1)
+
+            if (v241.Position - t2.value37.Position).Magnitude > 15 then
+                pcall(function()
+                    v241.CFrame = t2.value37
+                    v241.AssemblyLinearVelocity = Vector3.zero
+                    v241.AssemblyAngularVelocity = Vector3.zero
+                end)
+            end
+        end
+    else
+        t2.value41("การเก็บล้มเหลว " .. p25.name .. " — ลองใหม่...")
+    end
+    t2.value46(false)
+
+    return v251
+end
+local v54 = v5:Tab({
+    Title = "Auto Farm",
+    Icon = "egg"
+})
+
+local v55 = v54
+
+v55:Toggle({
+    Title = "เปิด Auto Farm",
+    Desc = "เก็บไข่ตามรายการที่เลือกและกลับบ้านอัตโนมัติ",
+    Value = false,
+    Callback = function(p26)
+        t2.value32 = p26
+        if t2.value32 then
+            if not t2.value37 then
+                t2.value48()
+            end
+            t2.value41("กำลังทำงาน...")
+        else
+            t2.value41("หยุด Auto Farm แล้ว")
+            t2.value46(false)
+        end
+    end
+})
+
+v55:Dropdown({
+    Title = "วิธีเคลื่อนที่",
+    Desc = "เลือกวาปทันทีหรือบินแบบ Tween",
+    Values = {
+        "วาป (Teleport ทันที)",
+        "บิน (Tween ลื่นๆ)"
+    },
+    Value = "วาป (Teleport ทันที)",
+    Callback = function(p27)
+        t2.value39 = p27
+    end
+})
+
+v55:Slider({
+    Title = "ความเร็วบิน",
+    Desc = "มีผลเมื่อเลือกโหมดบิน",
+    Step = 5,
+    Value = {
+        Min = 5,
+        Max = 200,
+        Default = t2.value78
+    },
+    Callback = function(value)
+        t2.value78 = value
+    end
+})
+
+local t46 = {}
+if t2.value29 then
+    table.insert(t46, t2.value16)
+else
+    for k, v in pairs(t2.value24) do
+        if t2.value26[t2.value21(v)] then
+            table.insert(t46, k)
+        end
+    end
+end
+
+t2.value71 = v55:Dropdown({
+    Title = "เลือกไข่ที่จะเก็บ",
+    Desc = "เลือกได้หลายชนิดและค้นหาชื่อไข่ได้",
+    Values = t2.value23,
+    Value = t46,
+    Multi = true,
+    Search = true,
+    AllowNone = true,
+    Callback = function(p28)
+        t2.value26 = {}
+        if type(p28) == "table" then
+            for _, v in ipairs(p28) do
+                local v317 = t2.value18(v)
+                if not t2.value17(v317) then
+                    local v318 = t2.value24[v317] or v317
+                    t2.value26[t2.value21(v318)] = true
+                end
+            end
+        elseif type(p28) == "string" and not t2.value17(p28) then
+            local v319 = t2.value24[p28] or p28
+            t2.value26[t2.value21(v319)] = true
+        end
+        t2.value43()
+    end
+})
+
+v55:Button({
+    Title = "รีเฟรชรายการไข่",
+    Desc = "อัปเดตรายการไข่จากข้อมูลในเกม",
+    Callback = function()
+        t2.value25()
+        if t2.value71 and t2.value71.SetValues then
+            t2.value71:SetValues(t2.value23)
+        end
+        t2.value1:Notify({
+            Title = "Flexozy",
+            Content = "รีเฟรชรายการไข่เรียบร้อย",
+            Duration = 3
+        })
+    end
+})
+
+v55:Button({
+    Title = "บันทึกจุดบ้าน",
+    Desc = "ใช้ตำแหน่งปัจจุบันเป็นจุดกลับบ้าน",
+    Callback = function()
+        local result = t2.value48()
+        t2.value1:Notify({
+            Title = "Flexozy",
+            Content = result and "บันทึกจุดบ้านแล้ว" or "ไม่สามารถบันทึกจุดบ้านได้",
+            Duration = 3
+        })
+    end
+})
+
+t2.value40 = v55:Paragraph({
+    Title = "สถานะ Auto Farm",
+    Desc = "ปิดอยู่"
+})
+
+local v61Tab = v5:Tab({
+    Title = "วางไข่อัตโนมัติ",
+    Icon = "package-plus"
+})
+
+local v61 = v61Tab:Section({
+    Title = "ระบบวางไข่อัตโนมัติ"
+})
+
+v61:Toggle({
+    Title = "เปิด Auto Place",
+    Desc = "วางไข่ลงในสวนอัตโนมัติ",
+    Value = false,
+    Callback = function(p29)
+        t2.value33 = p29
+        if t2.value33 then
+            if not t2.value37 then
+                t2.value48()
+            end
+            t2.value41("เปิด Auto Place")
+        else
+            t2.value41("ปิด Auto Place")
+        end
+    end
+})
+
+local placeModes = {
+    "วางทั้งหมด",
+    "วางเฉพาะที่เลือก"
+}
+
+v61:Dropdown({
+    Title = "โหมดวางไข่",
+    Desc = "เลือกว่าจะวางไข่ทุกชนิดหรือเฉพาะชนิดที่เลือก",
+    Values = placeModes,
+    Value = t2.value34,
+    Callback = function(p30)
+        t2.value34 = p30
+        t2.value43()
+    end
+})
+
+local t47 = {}
+if t2.value31 then
+    table.insert(t47, t2.value16)
+else
+    for k, v in pairs(t2.value24) do
+        local v66 = t2.value21(v)
+        if t2.value28[v66] then
+            table.insert(t47, k)
+        end
+    end
+end
+
+local t49 = {
+    Title = "เลือกไข่ที่จะวาง",
+    Desc = "เลือกไข่ที่ต้องการวางหลายชนิดได้",
+    Values = t2.value23,
+    Value = t47,
+    Multi = true,
+    Search = true,
+    AllowNone = true,
+    Callback = function(p31)
+        t2.value28 = {}
+        if type(p31) == "table" then
+            for k, v in pairs(p31) do
+                local v329 = k
+                local v330 = v
+                if type(v329) == "string" and (v == true or v == 1) then
+                    v330 = v329
+                end
+                local v332 = t2.value18(v330)
+                if type(v332) == "string" and not t2.value17(v332) then
+                    local v333 = t2.value24[v332] or v332
+                    t2.value28[t2.value21(v333)] = true
+                end
+            end
+        elseif type(p31) == "string" and not t2.value17(p31) then
+            local v334 = t2.value24[p31] or p31
+            t2.value28[t2.value21(v334)] = true
+        end
+        t2.value43()
+    end
+}
+
+v61:Dropdown(t49)
+
+v61:Paragraph({
+    Title = "คำแนะนำ",
+    Desc = "เปิด Auto Place แล้วระบบจะวางไข่ตามโหมดและรายการที่เลือก"
+})
+
+local v70Tab = v5:Tab({
+    Title = "Esp egg",
+    Icon = "eye"
+})
+
+local v70 = v70Tab:Section({
+    Title = "Egg ESP"
+})
+
+t2.value72 = t2.value12.EspEnabled
+t2.value73 = {}
+
+local function RemoveESP(p32)
+    local data = t2.value73[p32]
+    if data then
+        if data.gui then
+            pcall(function() data.gui:Destroy() end)
+        end
+        if data.highlight then
+            pcall(function() data.highlight:Destroy() end)
+        end
+        t2.value73[p32] = nil
+    end
+end
+
+local function ClearESP()
+    for egg in pairs(t2.value73) do
+        RemoveESP(egg)
+    end
+end
+
+local function GetESPParent()
+    local ok, result = pcall(function()
+        return gethui and gethui()
+    end)
+    if ok and result then
+        return result
+    end
+    local PlayerGui = t2.value10:FindFirstChildOfClass("PlayerGui")
+    return PlayerGui or t2.value5
+end
+
+local function CreateESP(p33, info)
+    if not p33 or not p33.Parent then
+        return
+    end
+
+    local EggBase = p33:FindFirstChild("EggBase", true)
+        or p33.PrimaryPart
+        or p33:FindFirstChildWhichIsA("BasePart", true)
+
+    if not EggBase then
+        return
+    end
+
+    RemoveESP(p33)
+
+    local rarity = (info and info.rarity) or "Unknown"
+
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "Flexozy_EggHighlight"
+    highlight.Adornee = p33
+    highlight.FillTransparency = 0.82
+    highlight.OutlineTransparency = 0.15
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = GetESPParent()
+
+    local BillboardGui = Instance.new("BillboardGui")
+    BillboardGui.Name = "Flexozy_EggESP"
+    BillboardGui.Adornee = EggBase
+    BillboardGui.Size = UDim2.new(0, 190, 0, 62)
+    BillboardGui.StudsOffset = Vector3.new(0, 3.1, 0)
+    BillboardGui.AlwaysOnTop = true
+    BillboardGui.MaxDistance = 500
+    BillboardGui.Parent = GetESPParent()
+
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, 0, 1, 0)
+    Frame.BackgroundColor3 = Color3.fromRGB(10, 14, 24)
+    Frame.BackgroundTransparency = 0.18
+    Frame.BorderSizePixel = 0
+    Frame.Parent = BillboardGui
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 9)
+    Corner.Parent = Frame
+
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Color = Color3.fromRGB(110, 190, 255)
+    Stroke.Thickness = 1.4
+    Stroke.Transparency = 0.12
+    Stroke.Parent = Frame
+
+    local NameLabel = Instance.new("TextLabel")
+    NameLabel.BackgroundTransparency = 1
+    NameLabel.Position = UDim2.new(0, 8, 0, 5)
+    NameLabel.Size = UDim2.new(1, -16, 0, 25)
+    NameLabel.Font = Enum.Font.GothamBold
+    NameLabel.Text = p33.Name
+    NameLabel.TextColor3 = Color3.fromRGB(245, 250, 255)
+    NameLabel.TextSize = 13
+    NameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    NameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    NameLabel.Parent = Frame
+
+    local InfoLabel = Instance.new("TextLabel")
+    InfoLabel.BackgroundTransparency = 1
+    InfoLabel.Position = UDim2.new(0, 8, 0, 30)
+    InfoLabel.Size = UDim2.new(1, -16, 0, 22)
+    InfoLabel.Font = Enum.Font.GothamMedium
+    InfoLabel.Text = "[" .. tostring(rarity) .. "] | --m"
+    InfoLabel.TextColor3 = Color3.fromRGB(150, 215, 255)
+    InfoLabel.TextSize = 11
+    InfoLabel.TextXAlignment = Enum.TextXAlignment.Center
+    InfoLabel.Parent = Frame
+
+    t2.value73[p33] = {
+        gui = BillboardGui,
+        infoLabel = InfoLabel,
+        targetPart = EggBase,
+        rarity = rarity,
+        highlight = highlight
+    }
+end
+
+v70:Toggle({
+    Title = "เปิดใช้งาน Egg ESP",
+    Desc = "แสดงชื่อ ความหายาก และระยะห่างของไข่บนหน้าจอ",
+    Value = t2.value72,
+    Callback = function(p35)
+        t2.value72 = p35
+        t2.value12.EspEnabled = p35
+
+        if p35 and next(t2.value27) == nil then
+            for _, v in pairs(t2.value24) do
+                t2.value27[t2.value21(v)] = true
+            end
+        end
+
+        t2.value43()
+
+        if not p35 then
+            ClearESP()
+        end
+    end
+})
+
+local t50 = {}
+if t2.value30 then
+    table.insert(t50, t2.value16)
+else
+    for k, v in pairs(t2.value24) do
+        if t2.value27[t2.value21(v)] then
+            table.insert(t50, k)
+        end
+    end
+end
+
+v70:Dropdown({
+    Title = "เลือกไข่สำหรับ ESP",
+    Desc = "เลือกชนิดไข่ที่ต้องการแสดงบน ESP",
+    Values = t2.value23,
+    Value = t50,
+    Multi = true,
+    Search = true,
+    AllowNone = true,
+    Callback = function(p36)
+        t2.value27 = {}
+
+        if type(p36) == "table" then
+            for _, v in ipairs(p36) do
+                local v358 = t2.value18(v)
+                if not t2.value17(v358) then
+                    local v359 = t2.value24[v358] or v358
+                    t2.value27[t2.value21(v359)] = true
+                end
+            end
+        elseif type(p36) == "string" and not t2.value17(p36) then
+            local v360 = t2.value24[p36] or p36
+            t2.value27[t2.value21(v360)] = true
+        end
+
+        ClearESP()
+        t2.value43()
+    end
+})
+
+v70:Button({
+    Title = "ล้าง ESP ทั้งหมด",
+    Desc = "ลบป้ายและกรอบ ESP ที่กำลังแสดงอยู่",
+    Callback = function()
+        ClearESP()
+    end
+})
+
+local discordTab = v5:Tab({
+    Title = "Discord",
+    Icon = "message-circle"
+})
+
+local HttpService = game:GetService("HttpService")
+
+local DISCORD_INVITE_CODE = "WFUejxeggt"
+local DISCORD_INVITE_LINK = "https://discord.gg/" .. DISCORD_INVITE_CODE
+
+local DISCORD_API_URL =
+    "https://discord.com/api/v10/invites/"
+    .. DISCORD_INVITE_CODE
+    .. "?with_counts=true&with_expiration=true"
+
+local discordServerCard
+local discordStatsCard
+local discordOwnerCard
+local discordCopyButton
+
+local function formatDiscordNumber(value)
+    value = tonumber(value)
+
+    if not value then
+        return "ไม่ทราบ"
+    end
+
+    local formatted = tostring(math.floor(value))
+        :reverse()
+        :gsub("(%d%d%d)", "%1,")
+        :reverse()
+
+    return formatted:gsub("^,", "")
+end
+
+local function getDiscordGuildIcon(guild)
+    if not guild or not guild.id or not guild.icon then
+        return nil
+    end
+
+    return ("https://cdn.discordapp.com/icons/%s/%s.png?size=256"):format(
+        tostring(guild.id),
+        tostring(guild.icon)
+    )
+end
+
+local function getDiscordAvatar(user)
+    if not user or not user.id then
+        return "https://cdn.discordapp.com/embed/avatars/0.png"
+    end
+
+    if user.avatar then
+        return ("https://cdn.discordapp.com/avatars/%s/%s.png?size=128"):format(
+            tostring(user.id),
+            tostring(user.avatar)
+        )
+    end
+
+    return "https://cdn.discordapp.com/embed/avatars/0.png"
+end
+
+local function notify(title, content)
+    pcall(function()
+        t2.value1:Notify({
+            Title = title,
+            Content = content,
+            Duration = 3
+        })
+    end)
+end
+
+local function CopyDiscordLink()
+    local copied = false
+
+    pcall(function()
+        if setclipboard then
+            setclipboard(DISCORD_INVITE_LINK)
+            copied = true
+
+        elseif toclipboard then
+            toclipboard(DISCORD_INVITE_LINK)
+            copied = true
+
+        elseif getgenv and getgenv().setclipboard then
+            getgenv().setclipboard(DISCORD_INVITE_LINK)
+            copied = true
+
+        elseif getgenv and getgenv().toclipboard then
+            getgenv().toclipboard(DISCORD_INVITE_LINK)
+            copied = true
+        end
+    end)
+
+    if copied then
+        notify(
+            "F!exozy",
+            "คัดลอกลิงก์ Discord แล้ว"
+        )
+    else
+        notify(
+            "F!exozy",
+            DISCORD_INVITE_LINK
+        )
+    end
+end
+
+discordServerCard = discordTab:Paragraph({
+    Title = "F!exozy Hub X | Discord",
+    Desc = "discord support | ติดต่อคำปรึกษา",
+    Image = "",
+    ImageSize = 64
+})
+
+discordStatsCard = discordTab:Paragraph({
+    Title = "สมาชิก",
+    Desc = "กำลังโหลดข้อมูล...",
+    Image = "https://cdn.discordapp.com/embed/avatars/0.png",
+    ImageSize = 44
+})
+
+discordOwnerCard = discordTab:Paragraph({
+    Title = "เจ้าของโดย",
+    Desc = "กำลังโหลดข้อมูล...",
+    Image = "https://cdn.discordapp.com/embed/avatars/0.png",
+    ImageSize = 48
+})
+
+discordCopyButton = discordTab:Button({
+    Title = "Copy",
+    Icon = "copy",
+    Callback = function()
+        CopyDiscordLink()
+    end
+})
+
+local function LoadDiscordInfo()
+
+    pcall(function()
+        discordServerCard:SetTitle(
+            "F!exozy Hub X | Discord"
+        )
+
+        discordServerCard:SetDesc(
+            "กำลังโหลดข้อมูลเซิร์ฟเวอร์..."
+        )
+    end)
+
+    local success, response = pcall(function()
+        return game:HttpGet(DISCORD_API_URL)
+    end)
+
+    if not success or type(response) ~= "string" then
+
+        pcall(function()
+            discordServerCard:SetDesc(
+                "ไม่สามารถโหลดข้อมูล Discord ได้"
+            )
+        end)
+
+        return
+    end
+
+    local decoded, data = pcall(function()
+        return HttpService:JSONDecode(response)
+    end)
+
+    if not decoded or type(data) ~= "table" then
+
+        pcall(function()
+            discordServerCard:SetDesc(
+                "ข้อมูล Discord API ไม่ถูกต้อง"
+            )
+        end)
+
+        return
+    end
+
+    if data.code and data.message and not data.guild then
+
+        pcall(function()
+            discordServerCard:SetDesc(
+                tostring(data.message)
+            )
+        end)
+
+        return
+    end
+
+    local guild = data.guild or {}
+    local inviter = data.inviter or {}
+
+    local guildName = tostring(
+        guild.name or "Discord Server"
+    )
+
+    local memberCount = tonumber(
+        data.approximate_member_count
+    ) or 0
+
+    local onlineCount = tonumber(
+        data.approximate_presence_count
+    ) or 0
+
+    local guildIcon = getDiscordGuildIcon(guild)
+    local ownerAvatar = getDiscordAvatar(inviter)
+
+    pcall(function()
+
+        discordServerCard:SetTitle(
+            guildName
+        )
+
+        discordServerCard:SetDesc(
+            "สมาชิก "
+            .. formatDiscordNumber(memberCount)
+            .. "  •  ออนไลน์ "
+            .. formatDiscordNumber(onlineCount)
+        )
+
+        if guildIcon and discordServerCard.SetImage then
+            discordServerCard:SetImage(
+                guildIcon,
+                64
+            )
+        end
+    end)
+
+    pcall(function()
+
+        discordStatsCard:SetTitle(
+            "สมาชิก"
+        )
+
+        discordStatsCard:SetDesc(
+            "ออนไลน์  "
+            .. formatDiscordNumber(onlineCount)
+            .. "\n"
+            .. "ทั้งหมด  "
+            .. formatDiscordNumber(memberCount)
+        )
+    end)
+
+    if inviter.username then
+
+        local ownerName = tostring(
+            inviter.global_name
+            or inviter.username
+        )
+
+        local ownerUsername = "@"
+            .. tostring(inviter.username)
+
+        pcall(function()
+
+            discordOwnerCard:SetTitle(
+                "เจ้าของโดย  " .. ownerName
+            )
+
+            discordOwnerCard:SetDesc(
+                ownerUsername
+            )
+
+            if ownerAvatar and discordOwnerCard.SetImage then
+                discordOwnerCard:SetImage(
+                    ownerAvatar,
+                    48
+                )
+            end
+        end)
+
+    else
+
+        pcall(function()
+
+            discordOwnerCard:SetTitle(
+                "เจ้าของโดย"
+            )
+
+            discordOwnerCard:SetDesc(
+                "ไม่พบข้อมูลเจ้าของ"
+            )
+        end)
+    end
+end
+
+task.spawn(function()
+    task.wait(0.8)
+    LoadDiscordInfo()
+end)
+
+local settingsTab = v5:Tab({
+    Title = "setting",
+    Icon = "settings"
+})
+
+local settingsSection = settingsTab:Section({
+    Title = "การทำงานและความปลอดภัย"
+})
+
+local antiAFKEnabled = true
+local VirtualUser = game:GetService("VirtualUser")
+
+settingsSection:Toggle({
+    Title = "ป้องกัน AFK Kick",
+    Desc = "ป้องกันการถูกเตะออกจากเซิร์ฟเวอร์เมื่อไม่มีการเคลื่อนไหว",
+    Value = antiAFKEnabled,
+    Callback = function(value)
+        antiAFKEnabled = value
+        t2.value1:Notify({
+            Title = "Flexozy",
+            Content = value and "เปิดระบบป้องกัน AFK แล้ว" or "ปิดระบบป้องกัน AFK แล้ว",
+            Duration = 3
+        })
+    end
+})
+
+settingsSection:Button({
+    Title = "รีเซ็ตการตั้งค่า ESP",
+    Desc = "ล้างรายการ ESP และปิดการแสดงผล",
+    Callback = function()
+        t2.value72 = false
+        t2.value12.EspEnabled = false
+        ClearESP()
+        t2.value43()
+        t2.value1:Notify({
+            Title = "Flexozy",
+            Content = "รีเซ็ต ESP แล้ว",
+            Duration = 3
+        })
+    end
+})
+
+settingsSection:Paragraph({
+    Title = "สถานะระบบ",
+    Desc = "Auto Farm / Auto Place / ESP แยกการทำงานออกจากกัน"
+})
+
+local afkConnection
+pcall(function()
+    afkConnection = t2.value10.Idled:Connect(function()
+        if not antiAFKEnabled then
+            return
+        end
+
+        pcall(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new(0, 0))
+        end)
+    end)
+end)
+
+task.spawn(function()
+    while true do
+        if t2.value32 then
+            local v335 = t2.value54()
+            if #v335 > 0 then
+                local v336 = v335[1]
+                t2.value41("เป้าหมาย: " .. v336.name .. " (" .. v336.rarity .. ")")
+                t2.value70(v336)
+            else
+                t2.value41("รอไข่ชนิดที่เลือกไว้...")
+            end
+        end
+        task.wait(0.6)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if t2.value33 and not t2.value32 then
+            t2.value69()
+        else
+            local value33 = t2.value33
+            if value33 then
+                value33 = t2.value32 and t2.value68()
+            end
+            if value33 then
+                t2.value69()
+            end
+        end
+        task.wait(0.8)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if t2.value72 then
+            local Character = t2.value10.Character
+            if Character then
+                local HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
+                if HumanoidRootPart then
+                    Character = HumanoidRootPart.Position
+                else
+                    Character = nil
+                end
+            else
+                Character = nil
+            end
+
+            for egg, data in pairs(t2.value73) do
+                if egg and egg.Parent and data.targetPart and data.targetPart.Parent then
+                    if Character then
+                        local distance = math.floor((Character - data.targetPart.Position).Magnitude)
+                        data.infoLabel.Text = string.format("[%s] | %dm", data.rarity, distance)
+                    end
+                else
+                    RemoveESP(egg)
+                end
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if t2.value72 then
+            local RenderedEggs = t2.value3:FindFirstChild("RenderedEggs")
+
+            if RenderedEggs then
+                for _, child in ipairs(RenderedEggs:GetChildren()) do
+                    if child:IsA("Model") then
+                        if t2.value52(child.Name) then
+                            if not t2.value73[child] then
+                                local info = v42(child.Name)
+                                pcall(function()
+                                    CreateESP(child, info)
+                                end)
+                            end
+                        elseif t2.value73[child] then
+                            RemoveESP(child)
+                        end
+                    end
+                end
+            end
+        elseif next(t2.value73) then
+            ClearESP()
+        end
+
+        task.wait(0.5)
+    end
+end)
+
+print("[Flexozy] Loaded")
