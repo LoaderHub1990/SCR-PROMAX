@@ -405,7 +405,7 @@ Ophyn.new({
                 end,
 
                 GetKeyLink = function(ctx)
-                    return "https://api-key4258-three.vercel.app/k/demo"
+                    return "https://api-key4258-three.vercel.app/getkey/flexozy-key24h"
                 end,
             }
         }
