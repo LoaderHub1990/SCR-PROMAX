@@ -1,0 +1,2060 @@
+local WindUI = loadstring(game:HttpGet(
+    "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
+))()
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+
+local LocalPlayer = Players.LocalPlayer
+
+local VERSION = "v1.0.0"
+local DEFAULT_KEY = "U"
+local DEFAULT_THEME = "Willow Rose"
+
+local CurrentKey = DEFAULT_KEY
+local CurrentTheme = DEFAULT_THEME
+
+local NotificationsSilenced = false
+local NotificationBusy = false
+local ReopenNotificationBusy = false
+local SelectedConfig = nil
+
+local DiscordInvite = "WFUejxeggt"
+local DiscordAPI =
+    "https://discord.com/api/v10/invites/"
+    .. DiscordInvite
+    .. "?with_counts=true&with_expiration=true"
+
+local Themes = {}
+
+local function Gradient(colors, rotation)
+    local points = {}
+    for position, color in pairs(colors) do
+        if type(color) == "table" then
+            points[position] = {
+                Color = Color3.fromHex(color.Color),
+                Transparency = color.Transparency or 0,
+            }
+        else
+            points[position] = {
+                Color = Color3.fromHex(color),
+                Transparency = 0,
+            }
+        end
+    end
+    return WindUI:Gradient(points, { Rotation = rotation or 45 })
+end
+
+local function CreateTheme(name, accent, background, outline, button, icon)
+    local theme = {
+        Name = name,
+        Accent = accent,
+        Background = background,
+        Outline = outline,
+        Text = Color3.fromHex("#FFFFFF"),
+        Placeholder = Color3.fromHex("#B8A0A8"),
+        Button = button,
+        Icon = icon,
+    }
+    Themes[name] = theme
+    WindUI:AddTheme(theme)
+end
+
+CreateTheme("Willow Rose",
+    Gradient({ ["0"]="#711E42", ["50"]="#E45B91", ["100"]="#711E42" }, 45),
+    Gradient({ ["0"]={Color="#0B0408",Transparency=0.06}, ["25"]={Color="#190812",Transparency=0.08}, ["50"]={Color="#351126",Transparency=0.10}, ["75"]={Color="#711E42",Transparency=0.13}, ["100"]={Color="#0B0408",Transparency=0.06} }, 135),
+    Gradient({ ["0"]={Color="#4B1730",Transparency=0.45}, ["50"]={Color="#D14F85",Transparency=0.22}, ["100"]={Color="#5A1C39",Transparency=0.42} }, 90),
+    Gradient({ ["0"]={Color="#2A0C1C",Transparency=0.72}, ["50"]={Color="#7E2850",Transparency=0.61}, ["100"]={Color="#2A0C1C",Transparency=0.74} }, 90),
+    Color3.fromHex("#FFFFFF"))
+
+CreateTheme("Willow Noir",
+    Gradient({ ["0"]="#111111", ["25"]="#252525", ["50"]="#777777", ["75"]="#252525", ["100"]="#111111" }, 45),
+    Gradient({ ["0"]={Color="#050505",Transparency=0.05}, ["30"]={Color="#101010",Transparency=0.07}, ["55"]={Color="#202020",Transparency=0.10}, ["75"]={Color="#333333",Transparency=0.13}, ["100"]={Color="#050505",Transparency=0.05} }, 135),
+    Gradient({ ["0"]={Color="#FFFFFF",Transparency=0.78}, ["50"]={Color="#8D8D8D",Transparency=0.45}, ["100"]={Color="#FFFFFF",Transparency=0.80} }, 90),
+    Gradient({ ["0"]={Color="#101010",Transparency=0.70}, ["50"]={Color="#555555",Transparency=0.48}, ["100"]={Color="#101010",Transparency=0.70} }, 90),
+    Color3.fromHex("#FFFFFF"))
+
+CreateTheme("Willow Crimson",
+    Gradient({ ["0"]="#5C0B1C", ["50"]="#A81738", ["100"]="#5C0B1C" }, 45),
+    Gradient({ ["0"]={Color="#090306",Transparency=0.08}, ["25"]={Color="#14050A",Transparency=0.09}, ["55"]={Color="#260710",Transparency=0.10}, ["80"]={Color="#5C0B1C",Transparency=0.14}, ["100"]={Color="#090306",Transparency=0.08} }, 135),
+    Gradient({ ["0"]={Color="#3A0A15",Transparency=0.45}, ["50"]={Color="#8B1732",Transparency=0.22}, ["100"]={Color="#420A17",Transparency=0.42} }, 90),
+    Gradient({ ["0"]={Color="#2A0A14",Transparency=0.72}, ["50"]={Color="#70152B",Transparency=0.61}, ["100"]={Color="#2A0A14",Transparency=0.74} }, 90),
+    Color3.fromHex("#FFFFFF"))
+
+CreateTheme("Willow Midnight",
+    Gradient({ ["0"]="#171B35", ["50"]="#4652A8", ["100"]="#171B35" }, 45),
+    Gradient({ ["0"]={Color="#05060C",Transparency=0.08}, ["25"]={Color="#080B17",Transparency=0.09}, ["55"]={Color="#11182B",Transparency=0.10}, ["80"]={Color="#202B52",Transparency=0.14}, ["100"]={Color="#05060C",Transparency=0.08} }, 135),
+    Gradient({ ["0"]={Color="#1D2447",Transparency=0.45}, ["50"]={Color="#5867C7",Transparency=0.22}, ["100"]={Color="#252B55",Transparency=0.42} }, 90),
+    Gradient({ ["0"]={Color="#11162D",Transparency=0.72}, ["50"]={Color="#303D7D",Transparency=0.61}, ["100"]={Color="#11162D",Transparency=0.74} }, 90),
+    Color3.fromHex("#FFFFFF"))
+
+CreateTheme("Willow Violet",
+    Gradient({ ["0"]="#4A176E", ["50"]="#A44BE2", ["100"]="#4A176E" }, 45),
+    Gradient({ ["0"]={Color="#08040D",Transparency=0.08}, ["25"]={Color="#12071B",Transparency=0.09}, ["55"]={Color="#251039",Transparency=0.10}, ["80"]={Color="#4A176E",Transparency=0.14}, ["100"]={Color="#08040D",Transparency=0.08} }, 135),
+    Gradient({ ["0"]={Color="#35144C",Transparency=0.45}, ["50"]={Color="#9844CF",Transparency=0.22}, ["100"]={Color="#431B5C",Transparency=0.42} }, 90),
+    Gradient({ ["0"]={Color="#1D0C2B",Transparency=0.72}, ["50"]={Color="#60308A",Transparency=0.61}, ["100"]={Color="#1D0C2B",Transparency=0.74} }, 90),
+    Color3.fromHex("#FFFFFF"))
+
+CreateTheme("Willow Ocean",
+    Gradient({ ["0"]="#0B4C67", ["50"]="#36BFEA", ["100"]="#0B4C67" }, 45),
+    Gradient({ ["0"]={Color="#03080C",Transparency=0.08}, ["25"]={Color="#05131C",Transparency=0.09}, ["55"]={Color="#082735",Transparency=0.10}, ["80"]={Color="#0B4C67",Transparency=0.14}, ["100"]={Color="#03080C",Transparency=0.08} }, 135),
+    Gradient({ ["0"]={Color="#0B384A",Transparency=0.45}, ["50"]={Color="#36A9D0",Transparency=0.22}, ["100"]={Color="#0B4055",Transparency=0.42} }, 90),
+    Gradient({ ["0"]={Color="#06212E",Transparency=0.72}, ["50"]={Color="#185E76",Transparency=0.61}, ["100"]={Color="#06212E",Transparency=0.74} }, 90),
+    Color3.fromHex("#FFFFFF"))
+
+CreateTheme("Willow Emerald",
+    Gradient({ ["0"]="#0B593C", ["50"]="#38D79A", ["100"]="#0B593C" }, 45),
+    Gradient({ ["0"]={Color="#030907",Transparency=0.08}, ["25"]={Color="#06160F",Transparency=0.09}, ["55"]={Color="#0A2D20",Transparency=0.10}, ["80"]={Color="#0B593C",Transparency=0.14}, ["100"]={Color="#030907",Transparency=0.08} }, 135),
+    Gradient({ ["0"]={Color="#0B3E2B",Transparency=0.45}, ["50"]={Color="#32B986",Transparency=0.22}, ["100"]={Color="#0B4934",Transparency=0.42} }, 90),
+    Gradient({ ["0"]={Color="#06261A",Transparency=0.72}, ["50"]={Color="#177955",Transparency=0.61}, ["100"]={Color="#06261A",Transparency=0.74} }, 90),
+    Color3.fromHex("#FFFFFF"))
+
+CreateTheme("Willow Ember",
+    Gradient({ ["0"]="#7A2A0C", ["50"]="#E87530", ["100"]="#7A2A0C" }, 45),
+    Gradient({ ["0"]={Color="#0B0604",Transparency=0.08}, ["25"]={Color="#1A0B06",Transparency=0.09}, ["55"]={Color="#3A180B",Transparency=0.10}, ["80"]={Color="#7A2A0C",Transparency=0.14}, ["100"]={Color="#0B0604",Transparency=0.08} }, 135),
+    Gradient({ ["0"]={Color="#52200E",Transparency=0.45}, ["50"]={Color="#CF5C25",Transparency=0.22}, ["100"]={Color="#642810",Transparency=0.42} }, 90),
+    Gradient({ ["0"]={Color="#2C1107",Transparency=0.72}, ["50"]={Color="#7F3514",Transparency=0.61}, ["100"]={Color="#2C1107",Transparency=0.74} }, 90),
+    Color3.fromHex("#FFFFFF"))
+
+WindUI:SetTheme(DEFAULT_THEME)
+
+local ThemeButtonColors = {
+    ["Willow Rose"]     = { Low="#711E42", High="#E45B91" },
+    ["Willow Noir"]     = { Low="#101010", High="#777777" },
+    ["Willow Crimson"]  = { Low="#5C0B1C", High="#A81738" },
+    ["Willow Midnight"] = { Low="#171B35", High="#4652A8" },
+    ["Willow Violet"]   = { Low="#4A176E", High="#A44BE2" },
+    ["Willow Ocean"]    = { Low="#0B4C67", High="#36BFEA" },
+    ["Willow Emerald"]  = { Low="#0B593C", High="#38D79A" },
+    ["Willow Ember"]    = { Low="#7A2A0C", High="#E87530" },
+}
+
+local ThemeTagColors = {
+    ["Willow Rose"]     = "#E45B91",
+    ["Willow Noir"]     = "#666666",
+    ["Willow Crimson"]  = "#A81738",
+    ["Willow Midnight"] = "#4652A8",
+    ["Willow Violet"]   = "#A44BE2",
+    ["Willow Ocean"]    = "#36BFEA",
+    ["Willow Emerald"]  = "#38D79A",
+    ["Willow Ember"]    = "#E87530",
+}
+
+local function GetOpenButtonColor(themeName)
+    local colors = ThemeButtonColors[themeName] or ThemeButtonColors[DEFAULT_THEME]
+    return ColorSequence.new(Color3.fromHex(colors.Low), Color3.fromHex(colors.High))
+end
+
+local function GetTagColor(themeName)
+    return Color3.fromHex(ThemeTagColors[themeName] or ThemeTagColors[DEFAULT_THEME])
+end
+
+local function SafeRequest(options)
+    local requestFunction =
+        (WindUI.Creator and WindUI.Creator.Request)
+        or http_request or request
+        or (syn and syn.request)
+        or (fluxus and fluxus.request)
+    if not requestFunction then return nil end
+    local success, response = pcall(function() return requestFunction(options) end)
+    if not success or not response then return nil end
+    if response.StatusCode and response.StatusCode ~= 200 then return nil end
+    return response
+end
+
+local function Notify(title, content, icon, duration, force)
+    duration = duration or 4
+    if NotificationsSilenced and not force then return end
+    if NotificationBusy and not force then return end
+    NotificationBusy = true
+    WindUI:Notify({ Title=title, Content=content, Icon=icon or "info", Duration=duration })
+    task.delay(duration, function() NotificationBusy = false end)
+end
+
+local function ReopenNotify()
+    if ReopenNotificationBusy then return end
+    ReopenNotificationBusy = true
+    task.delay(5, function() ReopenNotificationBusy = false end)
+end
+WindUI:SetFont("rbxasset://fonts/families/Roboto.json")
+
+local Window = WindUI:CreateWindow({
+    Title = "F!exozy X  | 128b!t Hub",
+    Icon = "rbxassetid://112028775617493",
+    Author = "made by 128B!t",
+    Folder = "128BitConfig",
+    Size = UDim2.fromOffset(700, 480),
+    MinSize = Vector2.new(580, 390),
+    MaxSize = Vector2.new(920, 680),
+    ToggleKey = Enum.KeyCode.U,
+    Transparent = true,
+    Theme = DEFAULT_THEME,
+    Resizable = true,
+    SideBarWidth = 180,
+    HideSearchBar = true,
+    ScrollBarEnabled = true,
+    BackgroundImageTransparency = 0.5,
+    ShadowTransparency = 0.22,
+    Radius = 14,
+    ElementsRadius = 10,
+    Acrylic = true,
+    NewElements = true,
+    HidePanelBackground = true,
+    Topbar = { Height=44, ButtonsType="Mac" },
+    OpenButton = {
+        Title = "F!exozy X  | 128b!t Hub",
+        Icon = "rbxassetid://112028775617493",
+        CornerRadius = UDim.new(1, 0),
+        StrokeThickness = 1,
+        Draggable = true,
+        Enabled = true,
+        OnlyMobile = false,
+        Scale = 0.92,
+        Color = GetOpenButtonColor(DEFAULT_THEME),
+    },
+    User = {
+        Enabled = true,
+        Anonymous = false,
+        Callback = function()
+        end,
+    },
+})
+
+Window:SetBackgroundTransparency(0.5)
+
+local function ApplyOpenButtonTheme(themeName)
+    pcall(function()
+        Window:EditOpenButton({
+            Title="F!exozy X  | 128b!t Hub", Icon="sparkles",
+            CornerRadius=UDim.new(1,0), StrokeThickness=1,
+            Enabled=true, Draggable=true, OnlyMobile=false,
+            Scale=0.92, Color=GetOpenButtonColor(themeName),
+        })
+    end)
+end
+
+local VersionTag = Window:Tag({ Title=VERSION, Icon="badge-check", Color=GetTagColor(DEFAULT_THEME), Radius=7 })
+local FPSTag     = Window:Tag({ Title="FPS: --", Icon="gauge",       Color=GetTagColor(DEFAULT_THEME), Radius=7 })
+
+local function ApplyTagTheme(themeName)
+    local color = GetTagColor(themeName)
+    pcall(function() VersionTag:SetColor(color) end)
+    pcall(function() FPSTag:SetColor(color) end)
+end
+
+ApplyOpenButtonTheme(DEFAULT_THEME)
+ApplyTagTheme(DEFAULT_THEME)
+
+local FPS = 0
+local Frames = 0
+local LastFPSUpdate = os.clock()
+RunService.RenderStepped:Connect(function()
+    Frames += 1
+    if os.clock() - LastFPSUpdate >= 1 then
+        FPS = Frames; Frames = 0; LastFPSUpdate = os.clock()
+        FPSTag:SetTitle("FPS: " .. tostring(FPS))
+    end
+end)
+
+-- Tabs
+local UtilityTab  = Window:Tab({ Title="Info",       Icon="info" })
+local CombatTab = Window:Tab({
+    Title = "Combat",
+    Icon = "sword"
+})
+local ProtectTab = Window:Tab({
+    Title = "Protect",
+    Icon = "shield"
+})
+
+local VisualTab   = Window:Tab({ Title="Visual",        Icon="eye" })
+local PlayerTab   = Window:Tab({ Title="Players",       Icon="users" })
+local LocalTab    = Window:Tab({ Title="Movement",   Icon="user" })
+local SFTab       = Window:Tab({ Title="Finder Server", Icon="pin" })
+local CFTab       = Window:Tab({ Title="CFrame Tool",   Icon="map-pin" })
+local LRTab       = Window:Tab({ Title="Loop Remote",   Icon="repeat" })
+local SettingsTab = Window:Tab({ Title="Settings",      Icon="settings" })
+
+-- LocalPlayer Tab
+local UserInputService = game:GetService("UserInputService")
+
+LocalTab:Section({ Title="LocalPlayer", Icon="user", Opened=true })
+
+local WalkSpeed    = 16
+local JumpPower    = 50
+local SpeedEnabled = false
+local JumpEnabled  = false
+local InfiniteJump = false
+local NoclipEnabled = false
+local ESPEnabled   = false
+local noclipConnection = nil
+local infiniteJumpConnection = nil
+
+local ESPFolder = Instance.new("Folder")
+ESPFolder.Name = "LocalPlayerESP"
+ESPFolder.Parent = game:GetService("CoreGui")
+
+local function getCharacter()
+    local c = LocalPlayer.Character
+    return (c and c.Parent) and c or nil
+end
+local function getHumanoid()
+    local c = getCharacter()
+    return c and c:FindFirstChildOfClass("Humanoid") or nil
+end
+
+local function applyMovement()
+    local h = getHumanoid()
+    if not h then return end
+    h.WalkSpeed  = SpeedEnabled and WalkSpeed or 16
+    h.UseJumpPower = true
+    h.JumpPower  = JumpEnabled  and JumpPower  or 50
+end
+
+LocalTab:Slider({
+    Title="Walk Speed", Desc="ปรับความเร็วในการวิ่ง",
+    Value={ Min=16, Max=300, Default=16 },
+    Callback=function(v) WalkSpeed=tonumber(v) or 16; if SpeedEnabled then applyMovement() end end
+})
+LocalTab:Toggle({
+    Title="Speed Boost", Desc="เปิด/ปิด WalkSpeed", Icon="zap", Value=false,
+    Callback=function(v) SpeedEnabled=v; applyMovement(); WindUI:Notify({ Title="LocalPlayer", Content=v and "เปิดวิ่งเร็วแล้ว" or "ปิดวิ่งเร็วแล้ว", Duration=2 }) end
+})
+LocalTab:Space()
+
+LocalTab:Slider({
+    Title="Jump Power", Desc="ปรับความสูงของการกระโดด",
+    Value={ Min=50, Max=300, Default=50 },
+    Callback=function(v) JumpPower=tonumber(v) or 50; if JumpEnabled then applyMovement() end end
+})
+LocalTab:Toggle({
+    Title="Jump Boost", Desc="เปิด/ปิด JumpPower", Icon="arrow-up", Value=false,
+    Callback=function(v) JumpEnabled=v; applyMovement(); WindUI:Notify({ Title="LocalPlayer", Content=v and "เปิดกระโดดสูงแล้ว" or "ปิดกระโดดสูงแล้ว", Duration=2 }) end
+})
+LocalTab:Space()
+
+local function stopInfiniteJump()
+    if infiniteJumpConnection then infiniteJumpConnection:Disconnect(); infiniteJumpConnection=nil end
+end
+local function startInfiniteJump()
+    stopInfiniteJump()
+    infiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
+        if not InfiniteJump then return end
+        local h = getHumanoid()
+        if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end)
+end
+
+LocalTab:Toggle({
+    Title="infJump", Desc="สามารถกระโดดกลางอากาศได้", Icon="infinity", Value=false,
+    Callback=function(v)
+        InfiniteJump=v
+        if v then startInfiniteJump() else stopInfiniteJump() end
+        WindUI:Notify({ Title="LocalPlayer", Content=v and "เปิดกระโดดไม่จำกัดแล้ว" or "ปิดกระโดดไม่จำกัดแล้ว", Duration=2 })
+    end
+})
+LocalTab:Space()
+
+local function stopNoclip()
+    if noclipConnection then noclipConnection:Disconnect(); noclipConnection=nil end
+    local c = getCharacter()
+    if c then for _,o in ipairs(c:GetDescendants()) do if o:IsA("BasePart") then o.CanCollide=true end end end
+end
+local function startNoclip()
+    stopNoclip()
+    noclipConnection = RunService.Stepped:Connect(function()
+        if not NoclipEnabled then return end
+        local c = getCharacter()
+        if not c then return end
+        for _,o in ipairs(c:GetDescendants()) do if o:IsA("BasePart") then o.CanCollide=false end end
+    end)
+end
+
+LocalTab:Toggle({
+    Title="Noclip", Desc="เปิด/ปิด Noclip", Icon="ghost", Value=false,
+    Callback=function(v)
+        NoclipEnabled=v
+        if v then startNoclip() else stopNoclip() end
+        WindUI:Notify({ Title="LocalPlayer", Content=v and "เปิดทะลุกำแพงแล้ว" or "ปิดทะลุกำแพงแล้ว", Duration=2 })
+    end
+})
+LocalTab:Space()
+
+local function clearESP()
+    for _,o in ipairs(ESPFolder:GetChildren()) do o:Destroy() end
+end
+local function createESP(player)
+    if player==LocalPlayer or not ESPEnabled then return end
+    local char = player.Character
+    if not char then return end
+    local old = ESPFolder:FindFirstChild(player.Name)
+    if old then old:Destroy() end
+    local hl = Instance.new("Highlight")
+    hl.Name = player.Name
+    hl.Adornee = char
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.FillTransparency = 0.65
+    hl.OutlineTransparency = 0
+    hl.Parent = ESPFolder
+end
+local function updateESP()
+    if not ESPEnabled then clearESP(); return end
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then createESP(p) end
+    end
+end
+Players.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function() task.wait(0.5); if ESPEnabled then createESP(p) end end)
+end)
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5); applyMovement()
+    if NoclipEnabled then startNoclip() end
+end)
+
+
+-- Combat Tab Content
+
+local killAllActive = false
+local killAllConn = nil
+
+local function startKillAll()
+    if killAllActive then return end
+    killAllActive = true
+
+    killAllConn = RunService.Heartbeat:Connect(function()
+        if not killAllActive then return end
+
+        local myChar = LocalPlayer.Character
+        if not myChar then return end
+
+        -- หา Tool ที่มี Handle ใน Character
+        local tool = nil
+        for _, obj in ipairs(myChar:GetChildren()) do
+            if obj:IsA("Tool") and obj:FindFirstChild("Handle") then
+                tool = obj
+                break
+            end
+        end
+
+        -- ถ้าไม่มีใน Character ไปหาใน Backpack แล้ว equip
+        if not tool then
+            local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
+            if bp then
+                for _, obj in ipairs(bp:GetChildren()) do
+                    if obj:IsA("Tool") and obj:FindFirstChild("Handle") then
+                        local hum = myChar:FindFirstChildOfClass("Humanoid")
+                        if hum then
+                            hum:EquipTool(obj)
+                            task.wait(0.15)
+                            tool = myChar:FindFirstChild(obj.Name)
+                        end
+                        break
+                    end
+                end
+            end
+        end
+
+        if not tool or not tool:FindFirstChild("Handle") then return end
+
+        tool:Activate()
+
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    for _, part in ipairs(p.Character:GetChildren()) do
+                        if part:IsA("BasePart") then
+                            firetouchinterest(tool.Handle, part, 0)
+                            firetouchinterest(tool.Handle, part, 1)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+end
+
+local function stopKillAll()
+    killAllActive = false
+    if killAllConn then
+        killAllConn:Disconnect()
+        killAllConn = nil
+    end
+end
+
+CombatTab:Section({
+    Title = "Kill All",
+    Icon = "sword",
+    Opened = true,
+})
+
+CombatTab:Toggle({
+    Title = "Kill All",
+    Desc = "ฆ่าทุกคนทั้งหมด",
+    Icon = "sword",
+    Value = false,
+    Callback = function(v)
+        if v then startKillAll() else stopKillAll() end
+    end,
+})
+-- Aimbot + Hitbox (HARU HUB X System)
+
+-- Hitbox
+local function savedPart(player, part)
+    if not hitbox_original_properties[player] then hitbox_original_properties[player] = {} end
+    if not hitbox_original_properties[player][part.Name] then
+        hitbox_original_properties[player][part.Name] = {
+            Size = part.Size,
+            Transparency = part.Transparency,
+            CanCollide = part.CanCollide
+        }
+    end
+end
+
+local function restoredPart(player)
+    if not hitbox_original_properties[player] then return end
+    for partName, props in pairs(hitbox_original_properties[player]) do
+        local part = player.Character and player.Character:FindFirstChild(partName)
+        if part and part:IsA("BasePart") then
+            part.Size        = props.Size
+            part.Transparency = props.Transparency
+            part.CanCollide  = props.CanCollide
+        end
+    end
+    hitbox_original_properties[player] = nil
+end
+
+local function extendHitbox(player)
+    if not player.Character then return end
+    for _, partName in ipairs(defaultBodyParts) do
+        local part = player.Character:FindFirstChild(partName)
+        if part and part:IsA("BasePart") then
+            savedPart(player, part)
+            part.Size        = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+            part.Transparency = 0.8
+            part.CanCollide  = false
+        end
+    end
+end
+
+local function updateHitboxes()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            if hitboxActive then
+                extendHitbox(p)
+            else
+                restoredPart(p)
+            end
+        end
+    end
+end
+-- UI
+
+CombatTab:Space()
+
+CombatTab:Section({
+    Title  = "Hitbox",
+    Icon   = "box",
+    Opened = true,
+})
+
+CombatTab:Toggle({
+    Title = "Hitbox Expander",
+    Desc  = "ขยาย Hitbox",
+    Icon  = "box",
+    Value = false,
+    Callback = function(v)
+        hitboxActive = v
+        updateHitboxes()
+    end,
+})
+CombatTab:Toggle({
+    Title = "No Hitbox Collision",
+    Desc  = "ทะลุ Hitbox",
+    Icon  = "box",
+    Value = false,
+    Callback = function(v)
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                for _, part in ipairs(p.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = not v
+                    end
+                end
+            end
+        end
+        Notify("Combat", v and "No Collision เปิดแล้ว" or "No Collision ปิดแล้ว", "box", 2)
+    end,
+})
+
+CombatTab:Slider({
+    Title = "Hitbox Size",
+    Desc  = "ขนาด Hitbox",
+    Value = { Min = 2, Max = 150, Default = 6 },
+    Callback = function(v)
+        hitboxSize = v
+        if hitboxActive then updateHitboxes() end
+    end,
+})
+-- Godmode
+local godmodeActive = false
+local godmodeConn = nil
+
+local function startGodmode()
+    if godmodeActive then return end
+    godmodeActive = true
+
+    godmodeConn = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        if hum.Health < hum.MaxHealth * 0.3 then
+            hum.Health = hum.MaxHealth
+        end
+    end)
+end
+
+local function stopGodmode()
+    godmodeActive = false
+    if godmodeConn then
+        godmodeConn:Disconnect()
+        godmodeConn = nil
+    end
+end
+
+CombatTab:Space()
+
+CombatTab:Section({
+    Title = "Godmode (No All Game)",
+    Desc = "ได้แค่บางแมพนะจ๊ะ",
+    Icon = "shield",
+    Opened = true,
+})
+
+CombatTab:Toggle({
+    Title = "Godmode",
+    Desc = "ฟื้นฟูเลือด",
+    Icon = "shield",
+    Value = false,
+    Callback = function(v)
+        if v then startGodmode() else stopGodmode() end
+    end,
+})
+
+CombatTab:Slider({
+    Title = "Regen Threshold",
+    Desc = "ฟื้นเมื่อเลือดต่ำกว่า % นี้",
+    Value = { Min = 1, Max = 99, Default = 30 },
+    Callback = function(v)
+        -- อัปเดต threshold แบบ dynamic
+        if godmodeConn then
+            godmodeConn:Disconnect()
+            godmodeConn = RunService.Heartbeat:Connect(function()
+                local char = LocalPlayer.Character
+                if not char then return end
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if not hum then return end
+                if hum.Health < hum.MaxHealth * (v / 100) then
+                    hum.Health = hum.MaxHealth
+                end
+            end)
+        end
+    end,
+})
+-- FLING FUNCTION
+
+local function SHubFling(TargetPlayer)
+    local myChar = LocalPlayer.Character
+    if not myChar then return end
+    local myHum = myChar:FindFirstChildOfClass("Humanoid")
+    local myRoot = myHum and myHum.RootPart
+    if not myRoot or not myHum then return end
+
+    local TCharacter = TargetPlayer.Character
+    if not TCharacter then return end
+    local THumanoid = TCharacter:FindFirstChildOfClass("Humanoid")
+    local TRootPart = THumanoid and THumanoid.RootPart
+    local THead = TCharacter:FindFirstChild("Head")
+    local Accessory = TCharacter:FindFirstChildOfClass("Accessory")
+    local Handle = Accessory and Accessory:FindFirstChild("Handle")
+
+    if not (TRootPart or THead or Handle) then return end
+
+    local OldPos = myRoot.CFrame
+
+    repeat task.wait()
+        workspace.CurrentCamera.CameraSubject = THead or Handle or THumanoid
+    until workspace.CurrentCamera.CameraSubject == (THead or Handle or THumanoid)
+
+    local function FPos(BasePart, Pos, Ang)
+        local targetCF = CFrame.new(BasePart.Position) * Pos * Ang
+        myRoot.CFrame = targetCF
+        myChar:SetPrimaryPartCFrame(targetCF)
+        myRoot.Velocity = Vector3.new(9e7, 9e8, 9e7)
+        myRoot.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+    end
+
+    local function SFBasePart(BasePart)
+        local start = tick()
+        local angle = 0
+        repeat
+            if myRoot and THumanoid then
+                angle = angle + 100
+                for _, offset in ipairs({
+                    CFrame.new(0, 1.5, 0),
+                    CFrame.new(0, -1.5, 0),
+                    CFrame.new(2.25, 1.5, -2.25),
+                    CFrame.new(-2.25, -1.5, 2.25)
+                }) do
+                    FPos(BasePart, offset + THumanoid.MoveDirection, CFrame.Angles(math.rad(angle), 0, 0))
+                    task.wait()
+                end
+            end
+        until BasePart.Velocity.Magnitude > 500 or tick() - start > getgenv().timeout
+    end
+
+    local BV = Instance.new("BodyVelocity")
+    BV.Name = "FlingForce"
+    BV.Velocity = Vector3.new(9e8, 9e8, 9e8)
+    BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    BV.Parent = myRoot
+
+    myHum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+
+    local target = TRootPart or THead or Handle
+    if target then SFBasePart(target) end
+
+    BV:Destroy()
+    myHum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+
+    repeat task.wait()
+        workspace.CurrentCamera.CameraSubject = myHum
+    until workspace.CurrentCamera.CameraSubject == myHum
+
+    repeat
+        local cf = OldPos * CFrame.new(0, 0.5, 0)
+        myRoot.CFrame = cf
+        myChar:SetPrimaryPartCFrame(cf)
+        myHum:ChangeState("GettingUp")
+        for _, part in ipairs(myChar:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.Velocity = Vector3.zero
+                part.RotVelocity = Vector3.zero
+            end
+        end
+        task.wait()
+    until (myRoot.Position - OldPos.Position).Magnitude < 25
+end
+CombatTab:Section({ Title = "Fling", Opened = true, })
+
+CombatTab:Slider({
+    Title = "Fling Timeout",
+    Step  = 0.5,
+    Value = { Min = 0.5, Max = 10, Default = 2.5 },
+    Callback = function(v)
+        getgenv().timeout = v
+    end
+})
+
+local PlayerList    = {}
+local SelectedPlayer = nil
+
+for _, plr in pairs(Players:GetPlayers()) do
+    if plr ~= LocalPlayer then
+        table.insert(PlayerList, plr.Name)
+    end
+end
+
+CombatTab:Dropdown({
+    Title  = "Select Player",
+    Desc   = "เลือกผู้เล่น",
+    Values = PlayerList,
+    Multi  = false,
+    Callback = function(v)
+        SelectedPlayer = v
+    end
+})
+
+CombatTab:Button({
+    Title = "Fling Selected Player",
+    Desc  = "เตะผู้เล่นกระเด็นออกแมพ",
+    Callback = function()
+        if not SelectedPlayer then return end
+        local target = Players:FindFirstChild(SelectedPlayer)
+        if target and target ~= LocalPlayer then
+            SHubFling(target)
+        end
+    end
+})
+CombatTab:Button({
+    Title = "Fling All Players",
+    Desc  = "เตะทุกคนออกแมพ",
+    Callback = function()
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    task.spawn(function()
+                        SHubFling(plr)
+                    end)
+                    task.wait(getgenv().timeout + 0.5)
+                end
+            end
+        end
+    end
+})
+-- Protect Tab Content
+
+local protectState = {
+    AFK        = false,
+    FallDmg    = false,
+    Void       = false,
+    Ragdoll    = false,
+    Sit        = false,
+    Stun       = false,
+    Fling      = false,
+    Reset      = false,
+    Idle       = false,
+}
+
+local protectConns = {}
+
+local function clearConn(key)
+    if protectConns[key] then
+        protectConns[key]:Disconnect()
+        protectConns[key] = nil
+    end
+end
+
+-- Anti AFK
+local function startAntiAFK()
+    local VIM = game:GetService("VirtualInputManager")
+    protectConns["AFK"] = RunService.Heartbeat:Connect(function()
+        VIM:SendKeyEvent(true,  Enum.KeyCode.W, false, game)
+        VIM:SendKeyEvent(false, Enum.KeyCode.W, false, game)
+    end)
+end
+
+-- Anti Fall Damage
+local function startAntiFallDmg()
+    protectConns["FallDmg"] = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        -- ลด velocity แนวตั้งก่อนกระแทก
+        if hrp.Velocity.Y < -50 then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, -50, hrp.Velocity.Z)
+        end
+    end)
+end
+
+-- Anti Void
+local safePos = nil
+local function startAntiVoid()
+    protectConns["Void"] = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        if hrp.Position.Y > -100 then
+            safePos = hrp.CFrame
+        else
+            if safePos then
+                hrp.CFrame = safePos
+            end
+        end
+    end)
+end
+
+-- Anti Ragdoll
+local function startAntiRagdoll()
+    local function fixRagdoll(char)
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        end
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BallSocketConstraint") or part:IsA("HingeConstraint") then
+                part.Enabled = false
+            end
+        end
+    end
+
+    local char = LocalPlayer.Character
+    fixRagdoll(char)
+
+    protectConns["Ragdoll"] = LocalPlayer.CharacterAdded:Connect(function(c)
+        task.wait(0.2)
+        fixRagdoll(c)
+    end)
+end
+
+local function stopAntiRagdoll()
+    clearConn("Ragdoll")
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+        hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+    end
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BallSocketConstraint") or part:IsA("HingeConstraint") then
+            part.Enabled = true
+        end
+    end
+end
+
+-- Anti Sit
+local function startAntiSit()
+    local char = LocalPlayer.Character
+    local function blockSit(c)
+        if not c then return end
+        local hum = c:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+        end
+    end
+    blockSit(char)
+    protectConns["Sit"] = LocalPlayer.CharacterAdded:Connect(function(c)
+        task.wait(0.2)
+        blockSit(c)
+    end)
+end
+
+local function stopAntiSit()
+    clearConn("Sit")
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+    end
+end
+
+-- Anti Stun
+local function startAntiStun()
+    protectConns["Stun"] = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        -- ล้าง stun attribute ที่เกม client อาจ set ไว้
+        for _, v in ipairs({"Stunned","Stun","stunned","stun","Frozen","frozen"}) do
+            if hum:GetAttribute(v) then
+                hum:SetAttribute(v, false)
+            end
+            if char:GetAttribute(v) then
+                char:SetAttribute(v, false)
+            end
+        end
+        -- force running state
+        if hum:GetState() == Enum.HumanoidStateType.Physics then
+            hum:ChangeState(Enum.HumanoidStateType.Running)
+        end
+    end)
+end
+
+-- Anti Fling
+local antiFlingConn = nil
+local antiFlingCharConn = nil
+
+local function applyAntiFling()
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character then
+                    for _, enemyPart in ipairs(plr.Character:GetDescendants()) do
+                        if enemyPart:IsA("BasePart") then
+                            local nc = Instance.new("NoCollisionConstraint")
+                            nc.Part0 = part
+                            nc.Part1 = enemyPart
+                            nc.Parent = char
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function clearAntiFling()
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("NoCollisionConstraint") then
+            v:Destroy()
+        end
+    end
+end
+
+
+-- Anti Reset
+local oldReset = nil
+local function startAntiReset()
+    local StarterGui = game:GetService("StarterGui")
+    pcall(function()
+        oldReset = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.PlayerList)
+        StarterGui:SetCore("ResetButtonCallback", false)
+    end)
+end
+
+local function stopAntiReset()
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("ResetButtonCallback", true)
+    end)
+end
+
+-- Anti Idle
+local function startAntiIdle()
+    protectConns["Idle"] = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        hum:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, false)
+        if hum:GetState() == Enum.HumanoidStateType.Running then
+            hum:ChangeState(Enum.HumanoidStateType.Running)
+        end
+    end)
+end
+
+-- UI
+
+ProtectTab:Section({ Title = "Protection", Icon = "shield", Opened = true })
+
+local toggles = {
+    { key = "AFK",     title = "Anti AFK",         desc = "กัน kick เพราะ AFK",               icon = "clock",           start = startAntiAFK,     stop = function() clearConn("AFK") end },
+    { key = "FallDmg", title = "Anti Fall Damage",  desc = "จำกัด velocity ตก ลด fall damage", icon = "arrow-down",      start = startAntiFallDmg, stop = function() clearConn("FallDmg") end },
+    { key = "Void",    title = "Anti Void",          desc = "ตก Void ดึงกลับจุดปลอดภัย",       icon = "move-down",       start = startAntiVoid,    stop = function() clearConn("Void") end },
+    { key = "Ragdoll", title = "Anti Ragdoll",       desc = "ป้องกัน Ragdoll / ล้ม",           icon = "person-standing", start = startAntiRagdoll, stop = stopAntiRagdoll },
+    { key = "Sit",     title = "Anti Sit",           desc = "ป้องกันถูกบังคับนั่ง",            icon = "armchair",        start = startAntiSit,     stop = stopAntiSit },
+    { key = "Stun",    title = "Anti Stun",          desc = "ล้าง Stun attribute ฝั่ง Client", icon = "zap-off",         start = startAntiStun,    stop = function() clearConn("Stun") end },
+    { key = "Reset",   title = "Anti Reset",         desc = "ปิดปุ่ม Reset character",         icon = "rotate-ccw",      start = startAntiReset,   stop = stopAntiReset },
+    { key = "Idle",    title = "Anti Idle",          desc = "ป้องกันสถานะ Idle",               icon = "activity",        start = startAntiIdle,    stop = function() clearConn("Idle") end },
+}
+
+for _, t in ipairs(toggles) do
+    ProtectTab:Toggle({
+        Title = t.title,
+        Desc  = t.desc,
+        Icon  = t.icon,
+        Value = false,
+        Callback = function(v)
+            protectState[t.key] = v
+            if v then
+                t.start()
+                Notify("Protect", t.title .. " เปิดแล้ว", t.icon, 2)
+            else
+                t.stop()
+                Notify("Protect", t.title .. " ปิดแล้ว", t.icon, 2)
+            end
+        end,
+    })
+end
+
+-- Anti Fling แยกออกมาเพราะมีระบบ conn ของตัวเอง
+ProtectTab:Toggle({
+    Title = "Anti Fling",
+    Desc  = "กันโดนดีด",
+    Icon  = "wind",
+    Value = false,
+    Callback = function(v)
+        getgenv().AntiFling = v
+
+        if v then
+            applyAntiFling()
+
+            antiFlingConn = Players.PlayerAdded:Connect(function(plr)
+                plr.CharacterAdded:Connect(function()
+                    task.wait(1)
+                    if getgenv().AntiFling then applyAntiFling() end
+                end)
+            end)
+
+            antiFlingCharConn = LocalPlayer.CharacterAdded:Connect(function()
+                task.wait(0.5)
+                if getgenv().AntiFling then applyAntiFling() end
+            end)
+
+        else
+            clearAntiFling()
+
+            if antiFlingConn then antiFlingConn:Disconnect() antiFlingConn = nil end
+            if antiFlingCharConn then antiFlingCharConn:Disconnect() antiFlingCharConn = nil end
+
+        end
+    end
+})
+-- Server Finder Tab
+local PlaceId = game.PlaceId
+
+SFTab:Section({ Title="Server Finder", Opened=true })
+
+local sfRunning = false
+
+-- FIX: InputIcon → Icon
+local SFStatusInput = SFTab:Input({
+    Title="Status", Placeholder="รอคำสั่ง...", Icon="activity",
+})
+local SFInfoInput = SFTab:Input({
+    Title="Server Info", Placeholder="กดปุ่มด้านล่างเพื่อค้นหา",
+    Icon="server", Type="Textarea",
+})
+
+local function sfSetStatus(m) SFStatusInput:Set(m) end
+local function sfSetInfo(s)
+    if s then
+        SFInfoInput:Set(("ID: %s...\nผู้เล่น %d/%d | Ping ~%dms")
+            :format(tostring(s.id):sub(1,18), s.playing or 0, s.maxPlayers or 0, math.random(40,120)))
+    else
+        SFInfoInput:Set("ไม่พบเซิร์ฟ")
+    end
+end
+
+local function fetchSrv(cursor)
+    local url=("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100"):format(PlaceId)
+    if cursor and cursor~="" then url=url.."&cursor="..cursor end
+    local ok,res=pcall(function() return game:HttpGet(url) end)
+    if not ok then return nil end
+    local ok2,data=pcall(HttpService.JSONDecode,HttpService,res)
+    return ok2 and data or nil
+end
+
+local function teleportTo(id)
+    sfSetStatus("กำลัง teleport...")
+    task.wait(0.5)
+    pcall(function() TeleportService:TeleportToPlaceInstance(PlaceId,id,LocalPlayer) end)
+end
+
+SFTab:Space()
+
+-- FIX: Group → HStack
+local SFRow1 = SFTab:HStack()
+SFRow1:Button({ Title="หาเซิร์ฟว่าง", Desc="คนน้อย", Justify="Center",
+    Callback=function()
+        if sfRunning then return end sfRunning=true sfSetStatus("กำลังหาเซิร์ฟว่าง...")
+        task.spawn(function()
+            local cur,best="",nil
+            repeat
+                local d=fetchSrv(cur~="" and cur or nil)
+                if not d or not d.data then break end
+                for _,s in ipairs(d.data) do
+                    local n=s.playing or 0
+                    if n==0 then best=s sfRunning=false break
+                    elseif not best or n<(best.playing or 999) then best=s end
+                end
+                cur=d.nextPageCursor or ""
+            until cur=="" or not sfRunning
+            sfSetInfo(best); if best then teleportTo(best.id) end; sfRunning=false
+        end)
+    end })
+SFRow1:Button({ Title="หาเซิร์ฟใหม่", Desc="เพิ่งสร้าง", Justify="Center",
+    Callback=function()
+        if sfRunning then return end sfRunning=true sfSetStatus("กำลังหาเซิร์ฟใหม่...")
+        task.spawn(function()
+            local url=("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100"):format(PlaceId)
+            local ok,res=pcall(function() return game:HttpGet(url) end)
+            if not ok then sfSetStatus("HttpGet ล้มเหลว"); sfRunning=false; return end
+            local ok2,data=pcall(HttpService.JSONDecode,HttpService,res)
+            if not ok2 or not data.data then sfSetStatus("parse ล้มเหลว"); sfRunning=false; return end
+            local best=nil
+            for _,s in ipairs(data.data) do
+                if not best or (s.ping or 9999)<(best.ping or 9999) then best=s end
+            end
+            sfSetInfo(best); if best then teleportTo(best.id) end; sfRunning=false
+        end)
+    end })
+
+SFTab:Space()
+
+local SFRow2 = SFTab:HStack()
+SFRow2:Button({ Title="หาเซิร์ฟเต็ม", Desc="คนเยอะ", Justify="Center",
+    Callback=function()
+        if sfRunning then return end sfRunning=true sfSetStatus("กำลังหาเซิร์ฟเต็ม...")
+        task.spawn(function()
+            local cur,best="",nil
+            repeat
+                local d=fetchSrv(cur~="" and cur or nil)
+                if not d or not d.data then break end
+                for _,s in ipairs(d.data) do
+                    local n=s.playing or 0
+                    if not best or n>(best.playing or 0) then best=s end
+                    if n>=(s.maxPlayers or 1) then sfRunning=false; break end
+                end
+                cur=d.nextPageCursor or ""
+            until cur=="" or not sfRunning
+            sfSetInfo(best); if best then teleportTo(best.id) end; sfRunning=false
+        end)
+    end })
+SFRow2:Button({ Title="หาเซิร์ฟเก่า", Desc="ออนนาน", Justify="Center",
+    Callback=function()
+        if sfRunning then return end sfRunning=true sfSetStatus("กำลังสแกนเซิร์ฟเก่า...")
+        task.spawn(function()
+            local cur,best,pg="",nil,0
+            repeat
+                local d=fetchSrv(cur~="" and cur or nil)
+                if not d or not d.data then break end
+                pg=pg+1
+                for _,s in ipairs(d.data) do
+                    if not best or (s.ping or 0)>(best.ping or 0) then best=s end
+                end
+                sfSetStatus("สแกน "..pg.." page...")
+                cur=d.nextPageCursor or ""
+                task.wait(0.1)
+            until cur=="" or not sfRunning or pg>=10
+            sfSetInfo(best); if best then teleportTo(best.id) end; sfRunning=false
+        end)
+    end })
+
+SFTab:Space()
+SFTab:Button({ Title="หยุด / ยกเลิก", Icon="x-circle", Justify="Center",
+    Callback=function()
+        sfRunning=false; sfSetStatus("ยกเลิกแล้ว"); SFInfoInput:Set("กดปุ่มด้านล่างเพื่อค้นหา")
+    end })
+
+-- CFrame Tool Tab
+local TweenService = game:GetService("TweenService")
+
+CFTab:Section({ Title="CFrame Tool", Opened=true })
+
+local savedCFrame = nil
+local tweenMode   = false
+local tweenSpeed  = 50
+local antiPullConn = nil
+local warpTween    = nil
+
+local function cfGetCharacter()
+    local c = LocalPlayer.Character
+    return (c and c.Parent) and c or nil
+end
+local function cfGetHRP()
+    local c = cfGetCharacter()
+    return c and c:FindFirstChild("HumanoidRootPart") or nil
+end
+local function cfGetHuman()
+    local c = cfGetCharacter()
+    return c and c:FindFirstChildOfClass("Humanoid") or nil
+end
+
+-- FIX: InputIcon → Icon
+local CFInput = CFTab:Input({
+    Title="Position (x, y, z)", Desc="พิมพ์หรือบันทึกตำแหน่ง",
+    Placeholder="x, y, z", Icon="crosshair",
+    Callback=function(value)
+        if type(value)~="string" then return end
+        local x,y,z = value:match("^%s*([%-%.%d]+)%s*,%s*([%-%.%d]+)%s*,%s*([%-%.%d]+)%s*$")
+        if not x then return end
+        x,y,z = tonumber(x),tonumber(y),tonumber(z)
+        if x and y and z then savedCFrame = CFrame.new(x,y,z) end
+    end
+})
+CFTab:Space()
+
+-- FIX: Group → HStack
+local CFRow1 = CFTab:HStack()
+CFRow1:Button({
+    Title="บันทึกตำแหน่ง", Desc="บันทึกตำแหน่งปัจจุบัน", Justify="Center",
+    Callback=function()
+        local hrp = cfGetHRP()
+        if not hrp then WindUI:Notify({ Title="CFrame", Content="ไม่พบ HumanoidRootPart", Duration=2 }); return end
+        savedCFrame = hrp.CFrame
+        local p = savedCFrame.Position
+        pcall(function() CFInput:Set(string.format("%.1f, %.1f, %.1f", p.X, p.Y, p.Z)) end)
+        WindUI:Notify({ Title="CFrame", Content="บันทึกตำแหน่งแล้ว!", Duration=2 })
+    end
+})
+CFRow1:Button({
+    Title="คัดลอก CFrame", Desc="คัดลอกตำแหน่งไปยัง Clipboard", Justify="Center",
+    Callback=function()
+        if not savedCFrame then WindUI:Notify({ Title="CFrame", Content="ยังไม่มีตำแหน่งที่บันทึก!", Duration=2 }); return end
+        local p = savedCFrame.Position
+        local text = string.format("CFrame.new(%.2f, %.2f, %.2f)", p.X, p.Y, p.Z)
+        if setclipboard then setclipboard(text); WindUI:Notify({ Title="CFrame", Content="คัดลอกแล้ว!", Duration=2 })
+        else WindUI:Notify({ Title="CFrame", Content=text, Duration=4 }) end
+    end
+})
+CFTab:Space()
+
+-- FIX: Group → HStack
+local CFRow2 = CFTab:HStack()
+CFRow2:Button({
+    Title="Instant", Desc="วาร์ปทันที", Justify="Center",
+    Callback=function() tweenMode=false; WindUI:Notify({ Title="Warp Mode", Content="Instant", Duration=1 }) end
+})
+CFRow2:Button({
+    Title="Tween", Desc="เคลื่อนที่ไปยังตำแหน่ง", Justify="Center",
+    Callback=function() tweenMode=true; WindUI:Notify({ Title="Warp Mode", Content="Tween", Duration=1 }) end
+})
+CFTab:Space()
+
+CFTab:Slider({
+    Title="Tween Speed", Desc="studs/sec",
+    Value={ Min=5, Max=300, Default=50 },
+    Callback=function(v) tweenSpeed=v end
+})
+CFTab:Space()
+
+local function stopAntiPull()
+    if antiPullConn then antiPullConn:Disconnect(); antiPullConn=nil end
+end
+local function startAntiPull(targetCFrame)
+    stopAntiPull()
+    antiPullConn = RunService.Heartbeat:Connect(function()
+        local hrp = cfGetHRP()
+        if not hrp then return end
+        if (hrp.Position - targetCFrame.Position).Magnitude > 3 then
+            hrp.CFrame = targetCFrame
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+        end
+    end)
+end
+
+CFTab:Button({
+    Title="วาร์ปไปตำแหน่ง", Desc="วาร์ปไปยังตำแหน่งที่บันทึกไว้", Icon="zap", Justify="Center",
+    Callback=function()
+        if warpTween then pcall(function() warpTween:Cancel() end); warpTween=nil end
+        stopAntiPull()
+        if not savedCFrame then WindUI:Notify({ Title="CFrame", Content="กรุณาบันทึกตำแหน่งก่อน!", Duration=2 }); return end
+        local hrp = cfGetHRP()
+        local hum = cfGetHuman()
+        if not hrp or not hum then WindUI:Notify({ Title="CFrame", Content="ไม่พบ Character!", Duration=2 }); return end
+        local target = savedCFrame
+        if tweenMode == false then
+            hrp.CFrame = target
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+            startAntiPull(target)
+            WindUI:Notify({ Title="Warp", Content="วาร์ปแล้ว! • Instant", Duration=2 })
+            task.delay(2, function() stopAntiPull() end)
+        else
+            local distance = (hrp.Position - target.Position).Magnitude
+            local duration = math.clamp(distance / math.max(tweenSpeed, 1), 0.1, 30)
+            hum.PlatformStand = true
+            warpTween = TweenService:Create(hrp,
+                TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut),
+                { CFrame = target })
+            antiPullConn = RunService.Heartbeat:Connect(function()
+                if hrp and hrp.Parent then
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    hrp.AssemblyAngularVelocity = Vector3.zero
+                end
+            end)
+            warpTween:Play()
+            warpTween.Completed:Connect(function()
+                stopAntiPull()
+                if not hum or not hum.Parent then warpTween=nil; return end
+                hum.PlatformStand = false
+                if hrp and hrp.Parent then
+                    hrp.CFrame = target
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    hrp.AssemblyAngularVelocity = Vector3.zero
+                end
+                WindUI:Notify({ Title="Warp", Content="ถึงตำแหน่งแล้ว! • Tween", Duration=2 })
+                task.delay(2, function() stopAntiPull(); warpTween=nil end)
+            end)
+        end
+    end
+})
+
+-- Loop Remote Tab
+LRTab:Section({ Title="Remote Loop", Opened=true })
+
+local loopRunning = false
+local loopCode    = ""
+local loopSpeed   = 0.1
+
+local LRCodeInput = LRTab:Input({
+    Title       = "Lua Code",
+    Desc        = "ใส่ Lua code ที่ต้องการลูป",
+    Placeholder = 'game:GetService("ReplicatedStorage"):WaitForChild("Remote"):FireServer()',
+    Icon        = "code",
+    Type        = "Textarea",
+    Callback    = function(v)
+        loopCode = v or ""
+    end
+})
+
+LRTab:Space()
+
+LRTab:Slider({
+    Title = "Loop Speed",
+    Desc  = "วินาทีต่อรอบ",
+    Value = { Min=1, Max=200, Default=10 },
+    Callback = function(v)
+        loopSpeed = v / 100  -- 1→0.01s, 10→0.1s, 100→1s
+    end
+})
+
+LRTab:Space()
+
+local LRGroup = LRTab:HStack()
+
+LRGroup:Button({
+    Title    = "เริ่มลูป",
+    Justify  = "Center",
+    Callback = function()
+        if loopRunning then
+            WindUI:Notify({ Title="Loop Remote", Content="กำลังทำงานอยู่แล้ว!", Duration=2 })
+            return
+        end
+
+        if loopCode == "" then
+            WindUI:Notify({ Title="Loop Remote", Content="ใส่ Code ก่อน!", Duration=2 })
+            return
+        end
+
+        loopRunning = true
+
+        task.spawn(function()
+            while loopRunning do
+                local ok, err = pcall(function()
+                    loadstring(loopCode)()
+                end)
+                if not ok then
+                    warn("[Loop Remote] Error:", err)
+                end
+                task.wait(loopSpeed)
+            end
+        end)
+
+        WindUI:Notify({ Title="Loop Remote", Content="เริ่มลูปแล้ว!", Duration=2 })
+    end
+})
+
+LRGroup:Button({
+    Title    = "หยุดลูป",
+    Justify  = "Center",
+    Callback = function()
+        loopRunning = false
+        WindUI:Notify({ Title="Loop Remote", Content="หยุดลูปแล้ว!", Duration=2 })
+    end
+})
+-- Utility Tab
+local DiscordCard = UtilityTab:Paragraph({
+    Title = "F!exozy X  | 128b!t Hub | Discord",
+    Desc = "กำลังโหลดข้อมูล Discord...",
+    Image = "rbxassetid://112028775617493",
+    ImageSize = 50,
+    Buttons = {
+        {
+            Icon = "copy",
+            Title = "Copy",
+            Callback = function()
+                local link = "https://discord.gg/" .. DiscordInvite
+                local copied = false
+
+                pcall(function()
+                    if setclipboard then
+                        setclipboard(link)
+                        copied = true
+                    elseif toclipboard then
+                        toclipboard(link)
+                        copied = true
+                    elseif getgenv and getgenv().setclipboard then
+                        getgenv().setclipboard(link)
+                        copied = true
+                    elseif getgenv and getgenv().toclipboard then
+                        getgenv().toclipboard(link)
+                        copied = true
+                    end
+                end)
+
+                if copied then
+                    Notify("Discord", "คัดลอกลิงก์ Discord แล้ว", "copy", 2)
+                else
+                    Notify("Discord", link, "message-circle", 4)
+                end
+            end
+        }
+    }
+})
+
+local function FormatDiscordNumber(value)
+    value = tonumber(value)
+    if not value then
+        return "ไม่ทราบ"
+    end
+
+    local formatted = tostring(math.floor(value))
+        :reverse()
+        :gsub("(%d%d%d)", "%1,")
+        :reverse()
+
+    return formatted:gsub("^,", "")
+end
+
+local function LoadDiscordInfo()
+    local apiUrl = DiscordAPI
+
+    pcall(function()
+        DiscordCard:SetTitle("F!exozy X  | 128b!t Hub | Discord")
+        DiscordCard:SetDesc("กำลังโหลดข้อมูล Discord...")
+        if DiscordCard.SetImage then
+            DiscordCard:SetImage("rbxassetid://112028775617493", 50)
+        end
+    end)
+
+    local success, response = pcall(function()
+        return game:HttpGet(apiUrl)
+    end)
+
+    if not success or type(response) ~= "string" then
+        pcall(function()
+            DiscordCard:SetDesc("ไม่สามารถโหลดข้อมูล Discord ได้")
+        end)
+        return
+    end
+
+    local decoded, data = pcall(function()
+        return HttpService:JSONDecode(response)
+    end)
+
+    if not decoded or type(data) ~= "table" then
+        pcall(function()
+            DiscordCard:SetDesc("ข้อมูล Discord API ไม่ถูกต้อง")
+        end)
+        return
+    end
+
+    if data.code and data.message and not data.guild then
+        pcall(function()
+            DiscordCard:SetDesc(tostring(data.message))
+        end)
+        return
+    end
+
+    local guild = data.guild or {}
+    local guildName = tostring(guild.name or "Discord Server")
+    local memberCount = tonumber(data.approximate_member_count) or 0
+    local onlineCount = tonumber(data.approximate_presence_count) or 0
+
+    pcall(function()
+        DiscordCard:SetTitle(guildName .. " | Discord")
+        DiscordCard:SetDesc(
+            "discord support | สมาชิก "
+            .. FormatDiscordNumber(memberCount)
+            .. " • ออนไลน์ "
+            .. FormatDiscordNumber(onlineCount)
+        )
+
+        if DiscordCard.SetImage then
+            DiscordCard:SetImage("rbxassetid://112028775617493", 50)
+        end
+    end)
+end
+
+task.spawn(function()
+    task.wait(0.8)
+    LoadDiscordInfo()
+end)
+
+local StatsService = game:GetService("Stats")
+
+UtilityTab:Section({ Title="Server Info", Icon="server", Opened=true })
+
+-- FIX: InputIcon → Icon
+local UtilFPSInput  = UtilityTab:Input({ Title="FPS",       Placeholder="กำลังวัด...", Icon="gauge" })
+local UtilPingInput = UtilityTab:Input({ Title="Ping (ms)", Placeholder="กำลังวัด...", Icon="wifi"  })
+
+do
+    local _frames=0; local _last=os.clock()
+    RunService.RenderStepped:Connect(function()
+        _frames+=1
+        local now=os.clock()
+        if now-_last>=1 then
+            pcall(function() UtilFPSInput:Set(tostring(_frames)) end)
+            local ok,ping=pcall(function()
+                return math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue())
+            end)
+            pcall(function() UtilPingInput:Set(ok and tostring(ping) or "N/A") end)
+            _frames=0; _last=now
+        end
+    end)
+end
+
+UtilityTab:Space()
+
+local UtilJobInput   = UtilityTab:Input({ Title="Server Job ID", Placeholder="กดปุ่ม Copy เพื่อดู", Icon="hash" })
+local UtilPlaceInput = UtilityTab:Input({ Title="Place ID",      Placeholder="กำลังโหลด...",         Icon="map"  })
+pcall(function() UtilJobInput:Set(tostring(game.JobId)) end)
+pcall(function() UtilPlaceInput:Set(tostring(game.PlaceId)) end)
+
+UtilityTab:Space()
+UtilityTab:Section({ Title="Actions", Icon="zap", Opened=true })
+
+-- FIX: Group → HStack
+local UtilRow1 = UtilityTab:HStack()
+UtilRow1:Button({
+    Title="Copy Server Info", Desc="คัดลอก JobID และ PlaceID", Justify="Center", Icon="clipboard-copy",
+    Callback=function()
+        local info=string.format("PlaceId: %s\nJobId: %s", tostring(game.PlaceId), tostring(game.JobId))
+        if setclipboard then setclipboard(info); Notify("Server Info","คัดลอกแล้ว!","clipboard-copy",2)
+        else Notify("Server Info",info,"server",4) end
+    end
+})
+UtilRow1:Button({
+    Title="Rejoin", Desc="เข้า Server เดิมใหม่", Justify="Center", Icon="rotate-cw",
+    Callback=function()
+        Notify("Rejoin","กำลัง Rejoin...","rotate-cw",2)
+        task.wait(1.5)
+        pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId,game.JobId,LocalPlayer) end)
+    end
+})
+UtilityTab:Space()
+
+UtilityTab:Button({
+    Title="Server Hop", Desc="ย้ายไป Server สุ่ม", Icon="shuffle", Justify="Center",
+    Callback=function()
+        Notify("Server Hop","กำลังหา Server ใหม่...","shuffle",2)
+        task.spawn(function()
+            local url=("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100"):format(game.PlaceId)
+            local ok,res=pcall(function() return game:HttpGet(url) end)
+            if not ok then Notify("Server Hop","HttpGet ล้มเหลว","triangle-alert",3); return end
+            local ok2,data=pcall(function() return HttpService:JSONDecode(res) end)
+            if not ok2 or not data or not data.data then Notify("Server Hop","Parse ล้มเหลว","triangle-alert",3); return end
+            local current=game.JobId; local servers={}
+            for _,s in ipairs(data.data) do
+                if s.id~=current and (s.playing or 0)<(s.maxPlayers or 1) then table.insert(servers,s) end
+            end
+            if #servers==0 then Notify("Server Hop","ไม่พบ Server ว่าง","triangle-alert",3); return end
+            local pick=servers[math.random(1,#servers)]
+            Notify("Server Hop","กำลัง Hop...","shuffle",2)
+            task.wait(1)
+            pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId,pick.id,LocalPlayer) end)
+        end)
+    end
+})
+
+-- Visual Tab
+local Camera = workspace.CurrentCamera
+
+local VisESPFolder = Instance.new("Folder")
+VisESPFolder.Name = "VisualESP"
+VisESPFolder.Parent = game:GetService("CoreGui")
+
+local VisState = {
+    ESP=false, Tracer=false, NameESP=false, Distance=false, HighlightOn=false,
+    FillColor=Color3.fromRGB(255,50,50), OutlineColor=Color3.fromRGB(255,255,255),
+    FillTrans=0.6, OutlineTrans=0,
+}
+
+VisualTab:Section({ Title="ESP Settings", Icon="eye", Opened=true })
+
+local function getVisContainer(player)
+    local name="VIS_"..player.Name
+    local c=VisESPFolder:FindFirstChild(name)
+    if not c then c=Instance.new("Folder"); c.Name=name; c.Parent=VisESPFolder end
+    return c
+end
+local function clearVisPlayer(player)
+    local c=VisESPFolder:FindFirstChild("VIS_"..player.Name)
+    if c then c:Destroy() end
+end
+local function buildESP(player)
+    if player==LocalPlayer then return end
+    local char=player.Character; if not char then return end
+    local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+    local container=getVisContainer(player)
+
+    local hl=container:FindFirstChildOfClass("Highlight")
+    if VisState.HighlightOn or VisState.ESP then
+        if not hl then
+            hl=Instance.new("Highlight")
+            hl.Adornee=char
+            hl.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
+            hl.Parent=container
+        end
+        hl.FillColor=VisState.FillColor
+        hl.OutlineColor=VisState.OutlineColor
+        hl.FillTransparency=VisState.FillTrans
+        hl.OutlineTransparency=VisState.OutlineTrans
+    else
+        if hl then hl:Destroy() end
+    end
+
+    local bb=container:FindFirstChild("ESPBillboard")
+    if VisState.NameESP or VisState.Distance then
+        if not bb then
+            bb=Instance.new("BillboardGui")
+            bb.Name="ESPBillboard"; bb.Adornee=hrp; bb.AlwaysOnTop=true
+            bb.Size=UDim2.new(0,120,0,40); bb.StudsOffset=Vector3.new(0,3,0); bb.Parent=container
+            local lbl=Instance.new("TextLabel")
+            lbl.Name="Label"; lbl.BackgroundTransparency=1; lbl.Size=UDim2.fromScale(1,1)
+            lbl.TextColor3=Color3.fromRGB(255,255,255); lbl.TextStrokeTransparency=0.4
+            lbl.TextScaled=true; lbl.Font=Enum.Font.GothamBold; lbl.Text=player.Name; lbl.Parent=bb
+        end
+    else
+        if bb then bb:Destroy() end
+    end
+
+    local tracer=container:FindFirstChild("ESPTracer")
+    if VisState.Tracer then
+        if not tracer then
+            tracer=Instance.new("SelectionBox")
+            tracer.Name="ESPTracer"; tracer.Adornee=hrp; tracer.LineThickness=0.05
+            tracer.SurfaceTransparency=1; tracer.SurfaceColor3=Color3.fromRGB(0,0,0); tracer.Parent=container
+        end
+        tracer.Color3=VisState.FillColor
+    else
+        if tracer then tracer:Destroy() end
+    end
+end
+
+local function rebuildAll()
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p~=LocalPlayer then
+            local anyOn=VisState.ESP or VisState.Tracer or VisState.NameESP or VisState.Distance or VisState.HighlightOn
+            if anyOn and p.Character then buildESP(p) else clearVisPlayer(p) end
+        end
+    end
+end
+
+RunService.Heartbeat:Connect(function()
+    if not (VisState.NameESP or VisState.Distance) then return end
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p==LocalPlayer then continue end
+        local char=p.Character; if not char then continue end
+        local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp then continue end
+        local container=VisESPFolder:FindFirstChild("VIS_"..p.Name); if not container then continue end
+        local bb=container:FindFirstChild("ESPBillboard"); if not bb then continue end
+        local lbl=bb:FindFirstChild("Label"); if not lbl then continue end
+        local myHRP=LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local dist=myHRP and math.floor((hrp.Position-myHRP.Position).Magnitude) or 0
+        local text=""
+        if VisState.NameESP then text=p.Name end
+        if VisState.Distance then text=text..(VisState.NameESP and ("\n"..dist.." studs") or (dist.." studs")) end
+        lbl.Text=text
+    end
+end)
+
+Players.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        local anyOn=VisState.ESP or VisState.Tracer or VisState.NameESP or VisState.Distance or VisState.HighlightOn
+        if anyOn then buildESP(p) end
+    end)
+end)
+Players.PlayerRemoving:Connect(function(p) clearVisPlayer(p) end)
+
+-- FIX: ทุก Toggle ใน VisualTab ตรวจสอบแล้ว — default Type คือ Toggle ถูกต้องแล้ว
+-- ปัญหา Tracer ไม่มี switch มาจาก Group deprecated ทำให้ layout พัง → แก้ด้วย HStack ข้างบน
+VisualTab:Toggle({
+    Title="ESP (Highlight)", Desc="แสดง Highlight รอบผู้เล่น", Icon="eye", Value=false,
+    Callback=function(v) VisState.ESP=v; VisState.HighlightOn=v; rebuildAll(); Notify("Visual",v and "เปิด ESP แล้ว" or "ปิด ESP แล้ว","eye",2) end
+})
+
+-- แก้แล้ว
+VisualTab:Toggle({
+    Title = "Tracer",
+    Desc  = "แสดงกล่องรอบผู้เล่น",
+    Icon  = "scan",  -- เปลี่ยน icon
+    Value = false,
+    Callback = function(v)
+        VisState.Tracer = v
+        rebuildAll()
+        Notify("Visual", v and "เปิด Tracer แล้ว" or "ปิด Tracer แล้ว", "scan", 2)
+    end,
+})
+VisualTab:Toggle({
+    Title="Name ESP", Desc="แสดงชื่อเหนือหัวผู้เล่น", Icon="user-round", Value=false,
+    Callback=function(v) VisState.NameESP=v; rebuildAll(); Notify("Visual",v and "เปิด Name ESP แล้ว" or "ปิด Name ESP แล้ว","user-round",2) end
+})
+VisualTab:Toggle({
+    Title="Distance", Desc="แสดงระยะห่างจากผู้เล่น", Icon="ruler", Value=false,
+    Callback=function(v) VisState.Distance=v; rebuildAll(); Notify("Visual",v and "เปิด Distance แล้ว" or "ปิด Distance แล้ว","ruler",2) end
+})
+VisualTab:Space()
+
+VisualTab:Section({ Title="Highlight Colors", Opened=true })
+
+VisualTab:Colorpicker({
+    Title   = "Fill Color",
+    Default = Color3.fromRGB(255, 50, 50),
+    Callback = function(v)
+        VisState.FillColor = v
+        rebuildAll()
+    end,
+})
+
+VisualTab:Colorpicker({
+    Title   = "Outline Color",
+    Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(v)
+        VisState.OutlineColor = v
+        rebuildAll()
+    end,
+})
+
+VisualTab:Slider({
+    Title = "Fill Transparency",
+    Desc  = "ความโปร่งใสของพื้น",
+    Value = { Min=0, Max=100, Default=60 },
+    Callback = function(v)
+        VisState.FillTrans = v / 100
+        rebuildAll()
+    end,
+})
+
+-- Player Tab
+local spectateConn      = nil
+local spectatingPlayer  = nil
+
+local function stopSpectate()
+    if spectateConn then spectateConn:Disconnect(); spectateConn=nil end
+    spectatingPlayer=nil
+    local cam=workspace.CurrentCamera
+    if cam then
+        cam.CameraType=Enum.CameraType.Custom
+        cam.CameraSubject=LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") or nil
+    end
+end
+local function startSpectate(targetPlayer)
+    stopSpectate()
+    local cam=workspace.CurrentCamera; if not cam then return end
+    spectatingPlayer=targetPlayer
+    local function updateCam()
+        if not spectatingPlayer or not spectatingPlayer.Character then return end
+        local hum=spectatingPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then cam.CameraType=Enum.CameraType.Custom; cam.CameraSubject=hum end
+    end
+    updateCam()
+    spectateConn=RunService.Heartbeat:Connect(updateCam)
+end
+
+PlayerTab:Section({ Title="Player List", Icon="users", Opened=true })
+
+local function getPlayerNames()
+    local names={}
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p~=LocalPlayer then table.insert(names,p.Name) end
+    end
+    return #names>0 and names or {"ไม่มีผู้เล่นอื่น"}
+end
+
+local PlayerDropdown = PlayerTab:Dropdown({
+    Title="เลือกผู้เล่น", Desc="เลือกผู้เล่นที่ต้องการ", Icon="user-round",
+    Values=getPlayerNames(), Value=getPlayerNames()[1],
+    Callback=function(v) end
+})
+
+PlayerTab:Button({
+    Title="Refresh List", Desc="รีเฟรชรายชื่อผู้เล่น", Icon="refresh-cw",
+    Callback=function()
+        pcall(function() PlayerDropdown:Refresh(getPlayerNames()) end)
+        Notify("Players","รีเฟรชรายชื่อแล้ว","refresh-cw",2)
+    end
+})
+
+Players.PlayerAdded:Connect(function()   task.wait(1);   pcall(function() PlayerDropdown:Refresh(getPlayerNames()) end) end)
+Players.PlayerRemoving:Connect(function() task.wait(0.5); pcall(function() PlayerDropdown:Refresh(getPlayerNames()) end) end)
+
+PlayerTab:Space()
+PlayerTab:Section({ Title="Actions", Icon="zap", Opened=true })
+
+local function getSelected()
+    local val=PlayerDropdown.Value
+    if not val or val=="ไม่มีผู้เล่นอื่น" then Notify("Players","เลือกผู้เล่นก่อน!","triangle-alert",2); return nil end
+    local p=Players:FindFirstChild(val)
+    if not p then Notify("Players","ไม่พบผู้เล่น: "..tostring(val),"triangle-alert",2); return nil end
+    return p
+end
+
+-- FIX: Group → HStack
+local PRow1 = PlayerTab:HStack()
+PRow1:Button({
+    Title="Teleport ไปหา", Desc="วาร์ปไปยังผู้เล่นที่เลือก", Justify="Center", Icon="map-pin",
+    Callback=function()
+        local target=getSelected(); if not target then return end
+        local char=target.Character
+        if not char then Notify("Teleport","ผู้เล่นยังไม่มี Character","triangle-alert",2); return end
+        local hrpTarget=char:FindFirstChild("HumanoidRootPart")
+        if not hrpTarget then Notify("Teleport","ไม่พบ HumanoidRootPart","triangle-alert",2); return end
+        local myChar=LocalPlayer.Character
+        local myHRP=myChar and myChar:FindFirstChild("HumanoidRootPart")
+        if not myHRP then Notify("Teleport","ไม่พบ Character ของเรา","triangle-alert",2); return end
+        myHRP.CFrame=hrpTarget.CFrame+Vector3.new(2,0,0)
+        Notify("Teleport","Teleport ไปหา "..target.Name.." แล้ว","map-pin",2)
+    end
+})
+PRow1:Button({
+    Title="Spectate", Desc="ดูผ่านกล้องของผู้เล่น", Justify="Center", Icon="video",
+    Callback=function()
+        local target=getSelected(); if not target then return end
+        if spectatingPlayer==target then stopSpectate(); Notify("Spectate","หยุด Spectate แล้ว","video-off",2); return end
+        startSpectate(target)
+        Notify("Spectate","Spectate "..target.Name.." แล้ว (กดอีกครั้งเพื่อหยุด)","video",2)
+    end
+})
+
+PlayerTab:Space()
+
+local PRow2 = PlayerTab:HStack()
+PRow2:Button({
+    Title="Copy User ID", Desc="คัดลอก UserId ของผู้เล่น", Justify="Center", Icon="clipboard-copy",
+    Callback=function()
+        local target=getSelected(); if not target then return end
+        local uid=tostring(target.UserId)
+        if setclipboard then setclipboard(uid); Notify("Copy ID",target.Name..": "..uid.." (คัดลอกแล้ว)","clipboard-copy",3)
+        else Notify("User ID",target.Name..": "..uid,"hash",4) end
+    end
+})
+PRow2:Button({
+    Title="Stop Spectate", Desc="หยุดดูกล้องผู้เล่น", Justify="Center", Icon="video-off",
+    Callback=function() stopSpectate(); Notify("Spectate","หยุด Spectate แล้ว","video-off",2) end
+})
+
+-- Settings Tab
+SettingsTab:Section({ Title="Window", Icon="panel-top", Opened=true })
+
+local WindowKeybind = SettingsTab:Keybind({
+    Title="Open / Close Keybind", Desc="Change the key used to toggle WillowHub.",
+    Value=CurrentKey,
+    Callback=function(value)
+        if type(value)~="string" then return end
+        local key=value:upper()
+        if not Enum.KeyCode[key] then return end
+        CurrentKey=key
+        Window:SetToggleKey(Enum.KeyCode[key])
+        Notify("Keybind Updated",'WillowHub now uses "'..key..'".', "keyboard", 3)
+    end
+})
+
+SettingsTab:Button({ Title="Open Window",   Desc="Open WillowHub immediately.", Icon="panel-top-open", Callback=function() Window:Open() end })
+SettingsTab:Button({
+    Title="Reset Keybind", Desc='Reset the open/close key to U.', Icon="rotate-ccw",
+    Callback=function()
+        CurrentKey=DEFAULT_KEY
+        Window:SetToggleKey(Enum.KeyCode.U)
+        WindowKeybind:Set("U")
+        Notify("Keybind Reset",'WillowHub is now using "U".', "keyboard", 3)
+    end
+})
+SettingsTab:Divider()
+
+SettingsTab:Section({ Title="Themes", Icon="palette", Opened=true })
+
+local ThemeDropdown = SettingsTab:Dropdown({
+    Title="Theme", Desc="Choose your WillowHub glass theme.",
+    Values={"Willow Rose","Willow Noir","Willow Crimson","Willow Midnight","Willow Violet","Willow Ocean","Willow Emerald","Willow Ember"},
+    Value=DEFAULT_THEME,
+    Callback=function(value)
+        if not Themes[value] then return end
+        CurrentTheme=value
+        WindUI:SetTheme(value)
+        ApplyOpenButtonTheme(value)
+        ApplyTagTheme(value)
+        Notify("Theme Changed", value.." applied.", "palette", 3)
+    end
+})
+
+SettingsTab:Paragraph({ Title="Willow Glass", Desc="Every theme keeps the same translucent acrylic style while changing the accent palette.", Icon="sparkles" })
+SettingsTab:Divider()
+
+SettingsTab:Section({ Title="Notifications", Icon="bell", Opened=true })
+
+local SilenceToggle = SettingsTab:Toggle({
+    Title="Silence Notifications", Desc="Prevent normal WillowHub notifications from appearing.",
+    Icon="bell-off", Value=false,
+    Callback=function(value) NotificationsSilenced=value==true end
+})
+
+SettingsTab:Paragraph({ Title="Reopen Notification", Desc="The closed-window reminder can still appear so you never forget your keybind.", Icon="message-square-warning" })
+SettingsTab:Divider()
+
+SettingsTab:Section({ Title="Configs", Icon="folder-cog", Opened=true })
+
+local ConfigManager = Window.ConfigManager
+local ConfigName = "Default"
+
+local ConfigNameInput = SettingsTab:Input({
+    Title="Config Name", Desc="Name of the configuration to save or load.",
+    Icon="file-cog", Value=ConfigName, Placeholder="MyConfig",
+    Callback=function(value) if value and value~="" then ConfigName=value end end
+})
+
+local function CreateConfig(name)
+    local config=ConfigManager:CreateConfig(name)
+    config:Register("WillowKeybind", WindowKeybind)
+    config:Register("SilenceNotifications", SilenceToggle)
+    return config
+end
+
+local function GetConfigs()
+    local ok,configs=pcall(function() return ConfigManager:AllConfigs() end)
+    if not ok or type(configs)~="table" or #configs==0 then return {"No configs"} end
+    table.sort(configs); return configs
+end
+
+local ConfigDropdown = SettingsTab:Dropdown({
+    Title="Saved Configs", Desc="Choose a saved WillowHub configuration.",
+    Values=GetConfigs(), Value="No configs",
+    Callback=function(value)
+        if value=="No configs" then SelectedConfig=nil; return end
+        SelectedConfig=value; ConfigName=value; ConfigNameInput:Set(value)
+    end
+})
+
+local function RefreshConfigDropdown()
+    pcall(function() ConfigDropdown:Refresh(GetConfigs()) end)
+end
+
+SettingsTab:Button({
+    Title="Save Config", Desc="Save the current WillowHub settings.", Icon="save",
+    Callback=function()
+        if not ConfigName or ConfigName=="" then Notify("Config","Enter a config name first.","triangle-alert",3); return end
+        local name=ConfigName:gsub("[^%w_%-%s]","")
+        if name=="" then Notify("Config","Invalid config name.","triangle-alert",3); return end
+        local ok,err=pcall(function() CreateConfig(name):Save() end)
+        if not ok then Notify("Config Error",tostring(err),"triangle-alert",4); return end
+        SelectedConfig=name; RefreshConfigDropdown()
+        Notify("Config Saved","Saved "..name..".","save",3)
+    end
+})
+SettingsTab:Button({
+    Title="Load Config", Desc="Load the selected configuration.", Icon="folder-open",
+    Callback=function()
+        local name=SelectedConfig or ConfigName
+        if not name or name=="" or name=="No configs" then Notify("Config","Select or enter a config first.","triangle-alert",3); return end
+        local ok,err=pcall(function() CreateConfig(name):Load() end)
+        if not ok then Notify("Config Error",tostring(err),"triangle-alert",4); return end
+        CurrentKey=WindowKeybind.Value or CurrentKey
+        if type(CurrentKey)=="string" and Enum.KeyCode[CurrentKey] then
+            Window:SetToggleKey(Enum.KeyCode[CurrentKey])
+        end
+        NotificationsSilenced=SilenceToggle.Value==true
+        Notify("Config Loaded","Loaded "..name..".","folder-open",3)
+    end
+})
+SettingsTab:Button({
+    Title="Delete Config", Desc="Delete the selected configuration.", Icon="trash-2",
+    Callback=function()
+        local name=SelectedConfig or ConfigName
+        if not name or name=="" or name=="No configs" then Notify("Config","Select a config first.","triangle-alert",3); return end
+        local ok,err=pcall(function() CreateConfig(name):Delete() end)
+        if not ok then Notify("Config Error",tostring(err),"triangle-alert",4); return end
+        SelectedConfig=nil; RefreshConfigDropdown()
+        Notify("Config Deleted","Deleted "..name..".","trash-2",3)
+    end
+})
+SettingsTab:Button({
+    Title="Refresh Configs", Desc="Refresh the saved configuration list.", Icon="refresh-cw",
+    Callback=function() RefreshConfigDropdown(); Notify("Configs","Configuration list refreshed.","refresh-cw",3) end
+})
+
+Window:OnClose(function()
+    task.delay(0.2, function() ReopenNotify() end)
+end)
