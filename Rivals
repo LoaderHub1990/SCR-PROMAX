@@ -1,0 +1,1024 @@
+local repS = cloneref(game:GetService("ReplicatedStorage"))
+local plrs = cloneref(game:GetService("Players"))
+local runS = cloneref(game:GetService("RunService"))
+local ws = cloneref(game:GetService("Workspace"))
+local uis = cloneref(game:GetService("UserInputService"))
+local lplr = plrs.LocalPlayer
+
+local util = require(repS.Modules.Utility)
+local enum = require(repS.Modules.EnumLibrary)
+local FighterController = require(lplr.PlayerScripts.Controllers.FighterController)
+local SpectateController = require(lplr.PlayerScripts.Controllers:WaitForChild("SpectateController"))
+
+if getgenv().FexozyCleanup then
+    pcall(getgenv().FexozyCleanup)
+end
+
+local connections = {}
+local function track(conn)
+    table.insert(connections, conn)
+    return conn
+end
+
+getgenv().FexozyCleanup = function()
+    for _, conn in ipairs(connections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    connections = {}
+end
+
+local coreGui = game:GetService("CoreGui")
+local playerGui = lplr:FindFirstChild("PlayerGui")
+do
+    local old = coreGui:FindFirstChild("FexozyHubX")
+    if old then old:Destroy() end
+    if playerGui then
+        local old2 = playerGui:FindFirstChild("FexozyHubX")
+        if old2 then old2:Destroy() end
+    end
+end
+
+local oldConfig = getgenv().Config or {}
+
+getgenv().Config = {
+    Enabled          = false,
+    UIOpen           = true,
+    FireRate         = oldConfig.FireRate or 0.0005,
+    WeaponSlot       = oldConfig.WeaponSlot or "Primary",
+    EmoteID          = oldConfig.EmoteID or 83194012641579,
+    StopOnMove       = oldConfig.StopOnMove or false,
+    FadeIn           = oldConfig.FadeIn or 0.1,
+    FadeOut          = oldConfig.FadeOut or 0.1,
+    Weight           = oldConfig.Weight or 1,
+    Speed            = oldConfig.Speed or 1,
+    AllowInvisible   = oldConfig.AllowInvisible ~= false,
+    RandomTeleport   = oldConfig.RandomTeleport ~= false,
+    MinTeleportRadius = oldConfig.MinTeleportRadius or 3,
+    MaxTeleportRadius = oldConfig.MaxTeleportRadius or 8,
+    HeightOffsetMin  = oldConfig.HeightOffsetMin or -1,
+    HeightOffsetMax  = oldConfig.HeightOffsetMax or 3,
+    BehindDistance   = oldConfig.BehindDistance or 5,
+    DeathDropThreshold = oldConfig.DeathDropThreshold or -5.5,
+    MinBoundsY       = oldConfig.MinBoundsY or 0,
+    MaxBoundsY       = oldConfig.MaxBoundsY or 200,
+    MaxDistanceFromTarget = oldConfig.MaxDistanceFromTarget or 25,
+    ToggleKey        = oldConfig.ToggleKey or Enum.KeyCode.RightShift,
+    WeaponKey        = oldConfig.WeaponKey or Enum.KeyCode.RightControl
+}
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FexozyHubX"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = coreGui or playerGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 270, 0, 320)
+main.Position = UDim2.new(0, 25, 0.5, -160)
+main.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+main.BorderSizePixel = 0
+main.ClipsDescendants = true
+main.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 11)
+mainCorner.Parent = main
+
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = Color3.fromRGB(235, 235, 235)
+mainStroke.Thickness = 1
+mainStroke.Transparency = 0.12
+mainStroke.Parent = main
+
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 58)
+topBar.BackgroundColor3 = Color3.fromRGB(17, 17, 19)
+topBar.BorderSizePixel = 0
+topBar.Parent = main
+
+local topCorner = Instance.new("UICorner")
+topCorner.CornerRadius = UDim.new(0, 11)
+topCorner.Parent = topBar
+
+local logo = Instance.new("ImageLabel")
+logo.Size = UDim2.new(0, 36, 0, 36)
+logo.Position = UDim2.new(0, 11, 0, 11)
+logo.BackgroundTransparency = 1
+logo.Image = "rbxassetid://112028775617493"
+logo.ScaleType = Enum.ScaleType.Fit
+logo.Parent = topBar
+
+local logoCorner = Instance.new("UICorner")
+logoCorner.CornerRadius = UDim.new(0, 8)
+logoCorner.Parent = logo
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -135, 0, 21)
+title.Position = UDim2.new(0, 55, 0, 9)
+title.BackgroundTransparency = 1
+title.Text = "F!exozy Hub X"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 15
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = topBar
+
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, -135, 0, 15)
+subtitle.Position = UDim2.new(0, 55, 0, 31)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "ระบบต่อสู้"
+subtitle.TextColor3 = Color3.fromRGB(145, 145, 150)
+subtitle.TextSize = 9
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.Parent = topBar
+
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Size = UDim2.new(0, 25, 0, 25)
+minimizeBtn.Position = UDim2.new(1, -59, 0, 16)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(29, 29, 32)
+minimizeBtn.Text = "—"
+minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeBtn.TextSize = 14
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.AutoButtonColor = false
+minimizeBtn.Parent = topBar
+
+local minCorner = Instance.new("UICorner")
+minCorner.CornerRadius = UDim.new(0, 6)
+minCorner.Parent = minimizeBtn
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 25, 0, 25)
+closeBtn.Position = UDim2.new(1, -30, 0, 16)
+closeBtn.BackgroundColor3 = Color3.fromRGB(29, 29, 32)
+closeBtn.Text = "×"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextSize = 17
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.AutoButtonColor = false
+closeBtn.Parent = topBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeBtn
+
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, -24, 1, -70)
+content.Position = UDim2.new(0, 12, 0, 68)
+content.BackgroundTransparency = 1
+content.Parent = main
+
+local statusText = Instance.new("TextLabel")
+statusText.Size = UDim2.new(1, 0, 0, 17)
+statusText.Position = UDim2.new(0, 0, 0, 0)
+statusText.BackgroundTransparency = 1
+statusText.Text = "สถานะระบบ"
+statusText.TextColor3 = Color3.fromRGB(190, 190, 195)
+statusText.TextSize = 10
+statusText.Font = Enum.Font.GothamBold
+statusText.TextXAlignment = Enum.TextXAlignment.Left
+statusText.Parent = content
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(1, 0, 0, 34)
+toggleBtn.Position = UDim2.new(0, 0, 0, 19)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(52, 29, 31)
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.TextSize = 12
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.Text = "ปิดใช้งาน"
+toggleBtn.AutoButtonColor = false
+toggleBtn.Parent = content
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 7)
+toggleCorner.Parent = toggleBtn
+
+local toggleStroke = Instance.new("UIStroke")
+toggleStroke.Color = Color3.fromRGB(210, 210, 210)
+toggleStroke.Thickness = 1
+toggleStroke.Transparency = 0.35
+toggleStroke.Parent = toggleBtn
+
+local weaponText = Instance.new("TextLabel")
+weaponText.Size = UDim2.new(1, 0, 0, 17)
+weaponText.Position = UDim2.new(0, 0, 0, 62)
+weaponText.BackgroundTransparency = 1
+weaponText.Text = "อาวุธ"
+weaponText.TextColor3 = Color3.fromRGB(190, 190, 195)
+weaponText.TextSize = 10
+weaponText.Font = Enum.Font.GothamBold
+weaponText.TextXAlignment = Enum.TextXAlignment.Left
+weaponText.Parent = content
+
+local weaponBtn = Instance.new("TextButton")
+weaponBtn.Size = UDim2.new(1, 0, 0, 34)
+weaponBtn.Position = UDim2.new(0, 0, 0, 82)
+weaponBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 28)
+weaponBtn.TextColor3 = Color3.fromRGB(245, 245, 245)
+weaponBtn.TextSize = 11
+weaponBtn.Font = Enum.Font.GothamMedium
+weaponBtn.Text = "อาวุธหลัก"
+weaponBtn.AutoButtonColor = false
+weaponBtn.Parent = content
+
+local weaponCorner = Instance.new("UICorner")
+weaponCorner.CornerRadius = UDim.new(0, 7)
+weaponCorner.Parent = weaponBtn
+
+local weaponStroke = Instance.new("UIStroke")
+weaponStroke.Color = Color3.fromRGB(210, 210, 210)
+weaponStroke.Thickness = 1
+weaponStroke.Transparency = 0.45
+weaponStroke.Parent = weaponBtn
+
+local toggleKeyText = Instance.new("TextLabel")
+toggleKeyText.Size = UDim2.new(0.48, 0, 0, 17)
+toggleKeyText.Position = UDim2.new(0, 0, 0, 125)
+toggleKeyText.BackgroundTransparency = 1
+toggleKeyText.Text = "คีย์เปิด/ปิดใช้งาน"
+toggleKeyText.TextColor3 = Color3.fromRGB(190, 190, 195)
+toggleKeyText.TextSize = 10
+toggleKeyText.Font = Enum.Font.GothamBold
+toggleKeyText.TextXAlignment = Enum.TextXAlignment.Left
+toggleKeyText.Parent = content
+
+local toggleKeyBtn = Instance.new("TextButton")
+toggleKeyBtn.Size = UDim2.new(0.48, -3, 0, 34)
+toggleKeyBtn.Position = UDim2.new(0, 0, 0, 145)
+toggleKeyBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 28)
+toggleKeyBtn.TextColor3 = Color3.fromRGB(245, 245, 245)
+toggleKeyBtn.TextSize = 10
+toggleKeyBtn.Font = Enum.Font.GothamMedium
+toggleKeyBtn.Text = "RightShift"
+toggleKeyBtn.AutoButtonColor = false
+toggleKeyBtn.Parent = content
+
+local toggleKeyCorner = Instance.new("UICorner")
+toggleKeyCorner.CornerRadius = UDim.new(0, 7)
+toggleKeyCorner.Parent = toggleKeyBtn
+
+local toggleKeyStroke = Instance.new("UIStroke")
+toggleKeyStroke.Color = Color3.fromRGB(210, 210, 210)
+toggleKeyStroke.Thickness = 1
+toggleKeyStroke.Transparency = 0.45
+toggleKeyStroke.Parent = toggleKeyBtn
+
+local weaponKeyText = Instance.new("TextLabel")
+weaponKeyText.Size = UDim2.new(0.48, 0, 0, 17)
+weaponKeyText.Position = UDim2.new(0.52, 0, 0, 125)
+weaponKeyText.BackgroundTransparency = 1
+weaponKeyText.Text = "คีย์สลับอาวุธ"
+weaponKeyText.TextColor3 = Color3.fromRGB(190, 190, 195)
+weaponKeyText.TextSize = 10
+weaponKeyText.Font = Enum.Font.GothamBold
+weaponKeyText.TextXAlignment = Enum.TextXAlignment.Left
+weaponKeyText.Parent = content
+
+local weaponKeyBtn = Instance.new("TextButton")
+weaponKeyBtn.Size = UDim2.new(0.48, -3, 0, 34)
+weaponKeyBtn.Position = UDim2.new(0.52, 0, 0, 145)
+weaponKeyBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 28)
+weaponKeyBtn.TextColor3 = Color3.fromRGB(245, 245, 245)
+weaponKeyBtn.TextSize = 10
+weaponKeyBtn.Font = Enum.Font.GothamMedium
+weaponKeyBtn.Text = "RightCtrl"
+weaponKeyBtn.AutoButtonColor = false
+weaponKeyBtn.Parent = content
+
+local weaponKeyCorner = Instance.new("UICorner")
+weaponKeyCorner.CornerRadius = UDim.new(0, 7)
+weaponKeyCorner.Parent = weaponKeyBtn
+
+local weaponKeyStroke = Instance.new("UIStroke")
+weaponKeyStroke.Color = Color3.fromRGB(210, 210, 210)
+weaponKeyStroke.Thickness = 1
+weaponKeyStroke.Transparency = 0.45
+weaponKeyStroke.Parent = weaponKeyBtn
+
+local keyHint = Instance.new("TextLabel")
+keyHint.Size = UDim2.new(1, 0, 0, 14)
+keyHint.Position = UDim2.new(0, 0, 0, 184)
+keyHint.BackgroundTransparency = 1
+keyHint.Text = "กดปุ่มด้านบนเพื่อตั้งคีย์ลัดแยกกัน"
+keyHint.TextColor3 = Color3.fromRGB(120, 120, 125)
+keyHint.TextSize = 9
+keyHint.Font = Enum.Font.Gotham
+keyHint.TextXAlignment = Enum.TextXAlignment.Center
+keyHint.Parent = content
+
+local slotsList = {
+    { Name = "อาวุธหลัก", Value = "Primary" },
+    { Name = "อาวุธรอง", Value = "Secondary" },
+    { Name = "ประชิด", Value = "Melee" }
+}
+
+local slots = {
+    Primary = 1,
+    Secondary = 2,
+    Melee = 3
+}
+
+local currentSlotIndex = 1
+local listeningForToggleKey = false
+local listeningForWeaponKey = false
+local lastToggleTime = 0
+local TOGGLE_DEBOUNCE = 0.3
+local firstToggle = true
+
+for i, s in ipairs(slotsList) do
+    if s.Value == getgenv().Config.WeaponSlot then
+        currentSlotIndex = i
+        break
+    end
+end
+
+local function getSlotNumber()
+    return slots[getgenv().Config.WeaponSlot] or 1
+end
+
+local function updateStatus()
+    if getgenv().Config.UIOpen then
+        toggleBtn.Text = "เปิดใช้งาน"
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 60, 35)
+        toggleStroke.Color = Color3.fromRGB(90, 220, 120)
+    else
+        toggleBtn.Text = "ปิดใช้งาน"
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 30, 32)
+        toggleStroke.Color = Color3.fromRGB(220, 90, 90)
+    end
+end
+
+local function updateWeaponBtn()
+    local selected = slotsList[currentSlotIndex]
+    if selected then
+        weaponBtn.Text = selected.Name
+        getgenv().Config.WeaponSlot = selected.Value
+    end
+end
+
+local function keyName(key)
+    local name = key.Name
+    if name == "RightShift" then return "RightShift"
+    elseif name == "LeftShift" then return "LeftShift"
+    elseif name == "RightControl" then return "RightCtrl"
+    elseif name == "LeftControl" then return "LeftCtrl"
+    elseif name == "RightAlt" then return "RightAlt"
+    elseif name == "LeftAlt" then return "LeftAlt"
+    elseif name == "Space" then return "Space"
+    end
+    return name
+end
+
+local function equipCurrentWeapon()
+    local localFighter = FighterController.LocalFighter
+    if localFighter then
+        pcall(function()
+            localFighter:EquipItem(getSlotNumber())
+        end)
+    end
+end
+
+local function switchWeapon()
+    currentSlotIndex = currentSlotIndex % #slotsList + 1
+    updateWeaponBtn()
+    equipCurrentWeapon()
+end
+
+local function toggleEnabled()
+    if firstToggle then
+        firstToggle = false
+        getgenv().Config.Enabled = true
+        getgenv().Config.UIOpen = true
+        updateStatus()
+        return
+    end
+
+    local newState = not getgenv().Config.Enabled
+    getgenv().Config.Enabled = newState
+    getgenv().Config.UIOpen = newState
+    updateStatus()
+end
+
+toggleBtn.MouseButton1Click:Connect(function()
+    if listeningForToggleKey or listeningForWeaponKey then
+        return
+    end
+    toggleEnabled()
+end)
+
+weaponBtn.MouseButton1Click:Connect(function()
+    if listeningForToggleKey or listeningForWeaponKey then
+        return
+    end
+    switchWeapon()
+end)
+
+toggleKeyBtn.MouseButton1Click:Connect(function()
+    if listeningForToggleKey or listeningForWeaponKey then
+        return
+    end
+    listeningForToggleKey = true
+    toggleKeyBtn.Text = "กดปุ่ม..."
+    toggleKeyStroke.Color = Color3.fromRGB(255, 255, 255)
+end)
+
+weaponKeyBtn.MouseButton1Click:Connect(function()
+    if listeningForToggleKey or listeningForWeaponKey then
+        return
+    end
+    listeningForWeaponKey = true
+    weaponKeyBtn.Text = "กดปุ่ม..."
+    weaponKeyStroke.Color = Color3.fromRGB(255, 255, 255)
+end)
+
+track(uis.InputBegan:Connect(function(input, processed)
+    if processed then
+        return
+    end
+
+    if input.UserInputType ~= Enum.UserInputType.Keyboard then
+        return
+    end
+
+    if listeningForToggleKey then
+        getgenv().Config.ToggleKey = input.KeyCode
+        toggleKeyBtn.Text = keyName(input.KeyCode)
+        listeningForToggleKey = false
+        toggleKeyStroke.Color = Color3.fromRGB(210, 210, 210)
+        return
+    end
+
+    if listeningForWeaponKey then
+        getgenv().Config.WeaponKey = input.KeyCode
+        weaponKeyBtn.Text = keyName(input.KeyCode)
+        listeningForWeaponKey = false
+        weaponKeyStroke.Color = Color3.fromRGB(210, 210, 210)
+        return
+    end
+
+    if input.KeyCode == getgenv().Config.ToggleKey then
+        local now = tick()
+        if now - lastToggleTime < TOGGLE_DEBOUNCE then
+            return
+        end
+        lastToggleTime = now
+        toggleEnabled()
+        return
+    end
+
+    if input.KeyCode == getgenv().Config.WeaponKey then
+        switchWeapon()
+        return
+    end
+end))
+
+local minimized = false
+
+minimizeBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    if minimized then
+        content.Visible = false
+        main.Size = UDim2.new(0, 270, 0, 58)
+        minimizeBtn.Text = "+"
+    else
+        content.Visible = true
+        main.Size = UDim2.new(0, 270, 0, 320)
+        minimizeBtn.Text = "—"
+    end
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+    screenGui.Enabled = false
+end)
+
+local dragging = false
+local dragStart
+local startPos
+
+topBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = main.Position
+    end
+end)
+
+topBar.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+track(uis.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        main.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end))
+
+updateStatus()
+updateWeaponBtn()
+toggleKeyBtn.Text = keyName(getgenv().Config.ToggleKey)
+weaponKeyBtn.Text = keyName(getgenv().Config.WeaponKey)
+
+local function handleDangerousItems()
+    for _, obj in ipairs(ws:GetDescendants()) do
+        local name = obj.Name:lower()
+        if name:find("kill") or name:find("lava") or name:find("death") or name:find("hazard") or name:find("damage") or name:find("chainsaw") or name:find("subspace tripmine") then
+            pcall(function()
+                if obj:IsA("BasePart") then
+                    obj.CFrame = CFrame.new(obj.Position.X, -500, obj.Position.Z)
+                    obj.AssemblyLinearVelocity = Vector3.zero
+                    obj.AssemblyAngularVelocity = Vector3.zero
+                    obj.Anchored = true
+                elseif obj:IsA("Model") then
+                    local primary = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                    if primary then
+                        primary.CFrame = CFrame.new(primary.Position.X, -500, primary.Position.Z)
+                        primary.Anchored = true
+                    end
+                end
+            end)
+        end
+    end
+end
+
+task.spawn(function()
+    while true do
+        if getgenv().Config.Enabled then
+            handleDangerousItems()
+        end
+        task.wait(0.5)
+    end
+end)
+
+track(ws.DescendantAdded:Connect(function(obj)
+    if not getgenv().Config.Enabled then
+        return
+    end
+
+    local name = obj.Name:lower()
+    if name:find("kill") or name:find("lava") or name:find("death") or name:find("hazard") or name:find("damage") or name:find("chainsaw") or name:find("subspace tripmine") then
+        pcall(function()
+            if obj:IsA("BasePart") then
+                obj.CFrame = CFrame.new(obj.Position.X, -500, obj.Position.Z)
+                obj.AssemblyLinearVelocity = Vector3.zero
+                obj.AssemblyAngularVelocity = Vector3.zero
+                obj.Anchored = true
+            elseif obj:IsA("Model") then
+                local primary = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                if primary then
+                    primary.CFrame = CFrame.new(primary.Position.X, -500, primary.Position.Z)
+                    primary.Anchored = true
+                end
+            end
+        end)
+    end
+end))
+
+task.spawn(function()
+    local localFighter = FighterController.LocalFighter
+    while not localFighter do
+        task.wait(0.1)
+        localFighter = FighterController.LocalFighter
+    end
+    if getgenv().Config.Enabled then
+        pcall(function()
+            localFighter:EquipItem(getSlotNumber())
+        end)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if not getgenv().Config.Enabled then
+            continue
+        end
+        local localFighter = FighterController.LocalFighter
+        if localFighter then
+            pcall(function()
+                localFighter:EquipItem(getSlotNumber())
+            end)
+        end
+    end
+end)
+
+local CurrentTrack
+local character = lplr.Character or lplr.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local lastPosition = character.PrimaryPart and character.PrimaryPart.Position or Vector3.new()
+
+track(lplr.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    humanoid = character:WaitForChild("Humanoid")
+    lastPosition = character.PrimaryPart and character.PrimaryPart.Position or Vector3.new()
+end))
+
+local function LoadTrack(id)
+    if CurrentTrack then
+        CurrentTrack:Stop(0)
+    end
+
+    local animId = "rbxassetid://" .. tostring(id)
+
+    local ok, result = pcall(function()
+        return game:GetObjects(animId)
+    end)
+
+    if ok and result and #result > 0 then
+        local anim = result[1]
+        if anim:IsA("Animation") then
+            animId = anim.AnimationId
+        end
+    end
+
+    local newAnim = Instance.new("Animation")
+    newAnim.AnimationId = animId
+
+    local newTrack = humanoid:LoadAnimation(newAnim)
+    newTrack.Priority = Enum.AnimationPriority.Action4
+
+    local weight = getgenv().Config.Weight == 0 and 0.001 or getgenv().Config.Weight
+
+    newTrack:Play(
+        getgenv().Config.FadeIn,
+        weight,
+        getgenv().Config.Speed
+    )
+
+    CurrentTrack = newTrack
+    return newTrack
+end
+
+task.spawn(function()
+    task.wait(1)
+    if getgenv().Config.Enabled then
+        pcall(function()
+            LoadTrack(getgenv().Config.EmoteID)
+        end)
+    end
+end)
+
+local originalCollisionStates = {}
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local function saveCollisionStates()
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") and part ~= humanoidRootPart then
+            originalCollisionStates[part] = part.CanCollide
+        end
+    end
+end
+
+local function disableCollisionsExceptRootPart()
+    if not getgenv().Config.AllowInvisible then
+        return
+    end
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") and part ~= humanoidRootPart then
+            part.CanCollide = false
+        end
+    end
+end
+
+local function restoreCollisionStates()
+    for part, canCollide in pairs(originalCollisionStates) do
+        if part and part.Parent then
+            part.CanCollide = canCollide
+        end
+    end
+    originalCollisionStates = {}
+end
+
+saveCollisionStates()
+
+track(runS.Stepped:Connect(function()
+    if not getgenv().Config.Enabled then
+        return
+    end
+    if character and character.Parent and getgenv().Config.AllowInvisible then
+        disableCollisionsExceptRootPart()
+    end
+end))
+
+track(lplr.CharacterAdded:Connect(function(newCharacter)
+    restoreCollisionStates()
+    character = newCharacter
+    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    saveCollisionStates()
+    task.wait(1)
+    if getgenv().Config.Enabled then
+        pcall(function()
+            LoadTrack(getgenv().Config.EmoteID)
+        end)
+    end
+end))
+
+track(runS.RenderStepped:Connect(function()
+    if not getgenv().Config.Enabled then
+        return
+    end
+    if character.PrimaryPart then
+        if getgenv().Config.StopOnMove and CurrentTrack and CurrentTrack.IsPlaying then
+            local moved = (character.PrimaryPart.Position - lastPosition).Magnitude > 0.1
+            local jumped = humanoid and humanoid:GetState() == Enum.HumanoidStateType.Jumping
+            if moved or jumped then
+                CurrentTrack:Stop(getgenv().Config.FadeOut)
+                CurrentTrack = nil
+            end
+        end
+        lastPosition = character.PrimaryPart.Position
+    end
+end))
+
+local lastFire = 0
+local deflecting = {}
+
+track(plrs.PlayerRemoving:Connect(function(player)
+    deflecting[player] = nil
+end))
+
+local function updateDeflection()
+    if not FighterController or not FighterController.Objects then
+        return
+    end
+
+    for _, fighterObj in FighterController.Objects do
+        local player = fighterObj.Player
+        if not player then
+            continue
+        end
+
+        if not fighterObj.Entity or not fighterObj.Entity:IsAlive() or fighterObj:Get("IsSpectating") then
+            deflecting[player] = false
+            continue
+        end
+
+        local equipped = fighterObj.EquippedItem
+        local itemName = equipped and equipped.ViewModel and equipped.ViewModel.Name or ""
+
+        local isDeflecting =
+            (itemName == "Katana" or itemName == "Chainsaw")
+            and (equipped._attack_cooldown and equipped._attack_cooldown > tick())
+            or false
+
+        deflecting[player] = isDeflecting
+    end
+end
+
+local function isEnemy(player)
+    if player == lplr then
+        return false
+    end
+
+    local duel = SpectateController.CurrentDuelSubject
+    local localDueler = duel and duel:GetDueler(lplr)
+    local localTeam = localDueler and localDueler:Get("TeamID") or nil
+
+    if localTeam and duel and duel.Duelers then
+        for _, dueler in duel.Duelers do
+            if dueler.Player == player then
+                return dueler:Get("TeamID") ~= localTeam
+            end
+        end
+    end
+
+    local pTeam = player:GetAttribute("TeamID")
+    local lTeam = lplr:GetAttribute("TeamID")
+
+    if pTeam and lTeam then
+        return pTeam ~= lTeam
+    end
+
+    return true
+end
+
+local function getClosestTarget()
+    local char = lplr.Character
+    if not char then
+        return nil, nil, nil
+    end
+
+    local myRoot = char:FindFirstChild("HumanoidRootPart")
+    if not myRoot then
+        return nil, nil, nil
+    end
+
+    local closestPlayer, closestRoot, closestHead = nil, nil, nil
+    local closestDist = 500
+
+    for _, player in plrs:GetPlayers() do
+        if not isEnemy(player) then
+            continue
+        end
+
+        local pChar = player.Character
+        if not pChar then
+            continue
+        end
+
+        local pRoot = pChar:FindFirstChild("HumanoidRootPart")
+        local pHead = pChar:FindFirstChild("Head")
+        local pHum = pChar:FindFirstChildWhichIsA("Humanoid")
+
+        if not (pRoot and pHead and pHum) then
+            continue
+        end
+
+        local dist = (myRoot.Position - pRoot.Position).Magnitude
+        if dist < closestDist then
+            closestDist = dist
+            closestPlayer = player
+            closestRoot = pRoot
+            closestHead = pHead
+        end
+    end
+
+    return closestPlayer, closestRoot, closestHead
+end
+
+track(runS.Heartbeat:Connect(function()
+    if not getgenv().Config.Enabled then
+        return
+    end
+
+    if lplr.Character and lplr.Character:FindFirstChild("HumanoidRootPart") then
+        local myRootPart = lplr.Character.HumanoidRootPart
+        if myRootPart.Position.Y < -40 then
+            myRootPart.CFrame = CFrame.new(
+                myRootPart.Position.X,
+                50,
+                myRootPart.Position.Z
+            )
+            myRootPart.Velocity = Vector3.zero
+        end
+    end
+
+    updateDeflection()
+
+    local targetPlayer, targetRoot, targetHead = getClosestTarget()
+    local desyncCF = nil
+
+    if targetPlayer and targetRoot and targetHead then
+        local pHum = targetPlayer.Character and targetPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+        local isTargetDead = not pHum or pHum.Health <= 0 or pHum.Health <= -150
+
+        if isTargetDead then
+            local dropPos = targetRoot.Position + Vector3.new(
+                0,
+                getgenv().Config.DeathDropThreshold,
+                0
+            )
+            desyncCF = CFrame.new(dropPos)
+        else
+            local targetPos = targetRoot.Position
+
+            if getgenv().Config.RandomTeleport then
+                local angle = math.random() * math.pi * 2
+                local radius = math.random(
+                    getgenv().Config.MinTeleportRadius * 10,
+                    getgenv().Config.MaxTeleportRadius * 10
+                ) / 10
+                local height = math.random(
+                    getgenv().Config.HeightOffsetMin * 10,
+                    getgenv().Config.HeightOffsetMax * 10
+                ) / 10
+
+                local randomOffset = Vector3.new(
+                    math.cos(angle) * radius,
+                    height,
+                    math.sin(angle) * radius
+                )
+
+                targetPos = targetRoot.Position + randomOffset
+            else
+                local behindOffset = Vector3.new(
+                    0,
+                    0,
+                    getgenv().Config.BehindDistance
+                )
+                targetPos = targetRoot.CFrame:PointToWorldSpace(behindOffset)
+            end
+
+            local validPos = true
+            if targetPos.Y < getgenv().Config.MinBoundsY or targetPos.Y > getgenv().Config.MaxBoundsY then
+                validPos = false
+            end
+            if (targetPos - targetRoot.Position).Magnitude > getgenv().Config.MaxDistanceFromTarget then
+                validPos = false
+            end
+            if not validPos then
+                targetPos = targetRoot.Position + Vector3.new(0, 2, 2)
+            end
+
+            desyncCF = CFrame.lookAt(
+                targetPos,
+                targetHead.Position
+            ) * CFrame.Angles(math.rad(180), 0, 0)
+        end
+    else
+        local myRoot = lplr.Character and lplr.Character:FindFirstChild("HumanoidRootPart")
+        if myRoot then
+            desyncCF = myRoot.CFrame
+        end
+    end
+
+    if desyncCF and lplr.Character then
+        local myRoot = lplr.Character:FindFirstChild("HumanoidRootPart")
+        if myRoot then
+            local oldCF = myRoot.CFrame
+            local oldVel = myRoot.Velocity
+            local oldRotVel = myRoot.RotVelocity
+
+            myRoot.CFrame = desyncCF
+
+            runS:BindToRenderStep("__restore", 101, function()
+                if myRoot then
+                    myRoot.CFrame = oldCF
+                    myRoot.Velocity = oldVel
+                    myRoot.RotVelocity = oldRotVel
+                end
+                runS:UnbindFromRenderStep("__restore")
+            end)
+        end
+    end
+
+    if not targetPlayer or not targetHead or not targetRoot then
+        return
+    end
+
+    local pHum = targetPlayer.Character and targetPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+    if not pHum or pHum.Health <= 0 or pHum.Health <= -150 then
+        return
+    end
+
+    if deflecting[targetPlayer] then
+        return
+    end
+
+    if not lplr.Character or not lplr.Character:FindFirstChild("HumanoidRootPart") then
+        return
+    end
+
+    if not FighterController or not FighterController.LocalFighter then
+        return
+    end
+
+    local item = FighterController.LocalFighter.EquippedItem
+    if not item then
+        return
+    end
+
+    if tick() - lastFire < getgenv().Config.FireRate then
+        return
+    end
+
+    lastFire = tick()
+
+    local originPos = desyncCF and desyncCF.Position or targetRoot.Position
+    local targetPos = targetHead.Position
+
+    local aimCF = CFrame.lookAt(originPos, targetPos)
+    local targetCF = targetHead.CFrame
+
+    local randomOffset = Vector3.new(
+        (math.random() - 0.5) * 0.1,
+        (math.random() - 0.5) * 0.1,
+        (math.random() - 0.5) * 0.1
+    )
+
+    local aimedPos = targetPos + randomOffset
+
+    local objSpaceHeadOffset = targetHead.CFrame:ToObjectSpace(
+        CFrame.new(aimedPos)
+    )
+
+    local cameradata = {}
+    local utf8_char_1 = string.char(1)
+    local utf8_char_0 = string.char(0)
+    local utf8_char_2 = string.char(2)
+    local utf8_char_3 = string.char(3)
+
+    cameradata[utf8_char_1] = {
+        [utf8_char_0] = util:EncodeCFrame(aimCF),
+        [utf8_char_1] = util:EncodeCFrame(targetCF),
+        [utf8_char_2] = targetHead,
+        [utf8_char_3] = util:EncodeCFrame(objSpaceHeadOffset)
+    }
+
+    repS.Remotes.Replication.Fighter.UseItem:FireServer(
+        item:Get("ObjectID"),
+        enum:ToEnum("StartShooting"),
+        cameradata,
+        nil
+    )
+end))
