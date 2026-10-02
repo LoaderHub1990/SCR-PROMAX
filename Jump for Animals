@@ -1,0 +1,2095 @@
+local STATE = STATE or {
+	onCleanup = function() end,
+	connect = function(signal, fn)
+		return signal:Connect(fn)
+	end,
+	namecallHook = function() end,
+	alive = function()
+		return true
+	end,
+}
+
+local Alive = true
+local Generation = (getgenv().OuroborosGeneration or 0) + 1
+getgenv().OuroborosGeneration = Generation
+local function alive()
+	return Alive and STATE.alive() and (getgenv().OuroborosGeneration or 0) == Generation
+end
+STATE.onCleanup(function()
+	Alive = false
+end)
+
+local Repo = "https://raw.githubusercontent.com/joustingmatch/ObsidianUltra/main/"
+local LoadOk, Library = pcall(function()
+	return loadstring(game:HttpGet(Repo .. "Library.lua"))()
+end)
+if not LoadOk or type(Library) ~= "table" then
+	warn("[Ouroboros] ObsidianUltra failed to load: " .. tostring(Library))
+	return
+end
+
+local SaveManager
+pcall(function()
+	SaveManager = loadstring(game:HttpGet(Repo .. "addons/SaveManager.lua"))()
+end)
+
+local PreviousLibrary = getgenv().OuroborosLibrary
+if PreviousLibrary and PreviousLibrary ~= Library and PreviousLibrary.Unload then
+	pcall(function()
+		PreviousLibrary:Unload()
+	end)
+end
+getgenv().OuroborosLibrary = Library
+
+STATE.onCleanup(function()
+	pcall(function()
+		Library:Unload()
+	end)
+	if getgenv().OuroborosLibrary == Library then
+		getgenv().OuroborosLibrary = nil
+	end
+end)
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+local Remotes = ReplicatedStorage:WaitForChild("Remotes", 15)
+if not Remotes then
+	Library:Notify({ Title = "Ouroboros", Description = "Remotes folder not found. Join the game first.", Time = 6, Type = "Error" })
+	return
+end
+
+local function waitRemote(name, parent)
+	local success, instance = pcall(function()
+		return (parent or Remotes):WaitForChild(name, 10)
+	end)
+	if success then
+		return instance
+	end
+	return nil
+end
+
+local PlaceEggRequest = waitRemote("PlaceEggRequest")
+local DropEggRequest = waitRemote("DropEggRequest")
+local SellRemote = waitRemote("Sell")
+local CoilsRemote = waitRemote("Coils")
+local TrailsRemote = waitRemote("Trails")
+local SquatTrainingRequest = waitRemote("SquatTrainingRequest")
+local StopSquattingRequest = waitRemote("StopSquattingRequest")
+local SquatBonusRequest = waitRemote("SquatBonusRequest")
+local OfflineRewardsRemote = waitRemote("OfflineRewards")
+local IndexRewardRemote = waitRemote("ClaimAnimalIndexReward")
+
+local Settings = ReplicatedStorage:FindFirstChild("Settings")
+local function requireSetting(name)
+	local module = Settings and Settings:FindFirstChild(name)
+	if not module then
+		return nil
+	end
+	local success, result = pcall(require, module)
+	if success then
+		return result
+	end
+	return nil
+end
+
+local Rarities = requireSetting("Rarities")
+local SpeedUpgrades = requireSetting("SpeedUpgrades")
+local TrailSettings = requireSetting("Trails")
+local BarbellUpgrades = requireSetting("BarbellUpgrades")
+local RecommendedJumps = requireSetting("RecommendedJumps")
+
+local ZoneJumpRequirements = { Meadow = 25 }
+if RecommendedJumps and type(RecommendedJumps.List) == "table" then
+	for key, value in pairs(RecommendedJumps.List) do
+		local zone = string.gsub(tostring(key), "%d+$", "")
+		local jump = tonumber(value)
+		if jump and (ZoneJumpRequirements[zone] == nil or jump < ZoneJumpRequirements[zone]) then
+			ZoneJumpRequirements[zone] = jump
+		end
+	end
+end
+
+local GameName = "Jump for Animals"
+local StartedAt = os.clock()
+
+local function getCharacter()
+	return LocalPlayer.Character
+end
+
+local function getHumanoid()
+	local character = getCharacter()
+	return character and character:FindFirstChildOfClass("Humanoid")
+end
+
+local function getRoot()
+	local character = getCharacter()
+	return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+local function teleportTo(position)
+	local root = getRoot()
+	if root and position then
+		root.CFrame = CFrame.new(position + Vector3.new(0, 3, 0))
+		return true
+	end
+	return false
+end
+
+local function holderPosition(holder)
+	if not holder then
+		return nil
+	end
+	if holder:IsA("BasePart") then
+		return holder.Position
+	end
+	if holder:IsA("Attachment") then
+		return holder.WorldPosition
+	end
+	return nil
+end
+
+local function getPlot()
+	local plot = LocalPlayer:FindFirstChild("Plot")
+	return plot and plot.Value or nil
+end
+
+local function getSquatDetector()
+	local plot = getPlot()
+	local zone = plot and plot:FindFirstChild("SquatZone")
+	local floor = zone and zone:FindFirstChild("Floor")
+	return floor and floor:FindFirstChild("Detector") or nil
+end
+
+local function getPlacementDetector()
+	local plot = getPlot()
+	return plot and plot:FindFirstChild("Detector", true) or nil
+end
+
+local function getCash()
+	local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+	local cash = leaderstats and leaderstats:FindFirstChild("Cash")
+	local value = cash and cash:FindFirstChild("V")
+	return value and tonumber(value.Value) or 0
+end
+
+local function getLevel()
+	local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+	local level = leaderstats and leaderstats:FindFirstChild("Level")
+	local value = level and level:FindFirstChild("V")
+	return value and tonumber(value.Value) or 0
+end
+
+local function isPetTool(tool)
+	return tool:IsA("Tool") and tool:GetAttribute("IsPetInventoryTool") == true
+end
+
+local function isEggTool(tool)
+	return tool:IsA("Tool") and tool:GetAttribute("IsEggTool") == true
+end
+
+local function forEachContainer(fn)
+	local character = getCharacter()
+	if LocalPlayer.Backpack then
+		fn(LocalPlayer.Backpack)
+	end
+	if character then
+		fn(character)
+	end
+end
+
+local function findTool(predicate)
+	local found
+	forEachContainer(function(container)
+		if found then
+			return
+		end
+		for _, child in ipairs(container:GetChildren()) do
+			if child:IsA("Tool") and predicate(child) then
+				found = child
+				return
+			end
+		end
+	end)
+	return found
+end
+
+local function countEggTools()
+	local count = 0
+	forEachContainer(function(container)
+		for _, child in ipairs(container:GetChildren()) do
+			if isEggTool(child) then
+				count += 1
+			end
+		end
+	end)
+	return count
+end
+
+local function countPlacedEggs()
+	local plot = getPlot()
+	local placed = plot and plot:FindFirstChild("PlacedEggs")
+	return placed and #placed:GetChildren() or 0
+end
+
+local function countReadyEggs()
+	local plot = getPlot()
+	local placed = plot and plot:FindFirstChild("PlacedEggs")
+	if not placed then
+		return 0
+	end
+	local ready = 0
+	for _, egg in ipairs(placed:GetChildren()) do
+		if egg:GetAttribute("HatchReady") == true then
+			ready += 1
+		end
+	end
+	return ready
+end
+
+local function uniqueAnimalNames()
+	local names = {}
+	local seen = {}
+	forEachContainer(function(container)
+		for _, child in ipairs(container:GetChildren()) do
+			if isPetTool(child) then
+				local name = child:GetAttribute("AnimalName") or child.Name
+				if not seen[name] then
+					seen[name] = true
+					table.insert(names, name)
+				end
+			end
+		end
+	end)
+	table.sort(names)
+	return names
+end
+
+-- รายชื่อสัตว์/ความหายาก/โซน ใช้ร่วมกับ UI และระบบอัตโนมัติ
+local AnimalNames = uniqueAnimalNames()
+if #AnimalNames == 0 then
+	AnimalNames = { "None" }
+end
+
+local RarityNames = {
+	"Common",
+	"Uncommon",
+	"Rare",
+	"Epic",
+	"Legendary",
+	"Mythic",
+	"Divine",
+	"Celestial",
+	"Eternal",
+}
+
+local ZoneNames = {}
+do
+	local map = workspace:FindFirstChild("Map")
+	local stages = map and map:FindFirstChild("Stages")
+	if stages then
+		for _, stage in ipairs(stages:GetChildren()) do
+			if stage:FindFirstChild("SpawnedEggs") then
+				table.insert(ZoneNames, stage.Name)
+			end
+		end
+	end
+end
+
+if #ZoneNames == 0 then
+	ZoneNames = {
+		"Meadow",
+		"Coral Reef",
+		"Winter",
+		"Desert",
+		"Crystal Mines",
+		"Jungle",
+		"Mystic Isles",
+		"Prehistoric",
+		"Celestial Heights",
+		"Savannah",
+	}
+end
+
+local ZoneThai = {
+	Meadow = "ทุ่งหญ้า",
+	["Coral Reef"] = "แนวปะการัง",
+	Winter = "ฤดูหนาว",
+	Desert = "ทะเลทราย",
+	["Crystal Mines"] = "เหมืองคริสตัล",
+	Jungle = "ป่า",
+	["Mystic Isles"] = "หมู่เกาะลึกลับ",
+	Prehistoric = "ยุคก่อนประวัติศาสตร์",
+	["Celestial Heights"] = "ดินแดนสวรรค์",
+	Savannah = "สะวันนา",
+}
+
+local ZoneNamesDisplay = {}
+for _, zone in ipairs(ZoneNames) do
+	table.insert(ZoneNamesDisplay, ZoneThai[zone] or zone)
+end
+
+local TrailNames = {
+	"Blue Trail",
+	"Red Trail",
+	"Green Trail",
+	"Yellow Trail",
+	"Purple Trail",
+	"White Trail",
+	"Black Trail",
+	"Galaxy Trail",
+	"Crimson Star Trail",
+	"Rainbow Trail",
+}
+
+local TrailNamesDisplay = {
+	"เส้นฟ้า",
+	"เส้นแดง",
+	"เส้นเขียว",
+	"เส้นเหลือง",
+	"เส้นม่วง",
+	"เส้นขาว",
+	"เส้นดำ",
+	"เส้นกาแล็กซี",
+	"เส้นดาวแดงเข้ม",
+	"เส้นสายรุ้ง",
+}
+
+
+local function abbreviate(value)
+	value = tonumber(value) or 0
+	local units = { "", "K", "M", "B", "T", "Qa", "Qi" }
+	local index = 1
+	while value >= 1000 and index < #units do
+		value /= 1000
+		index += 1
+	end
+	if index == 1 then
+		return tostring(math.floor(value))
+	end
+	return string.format("%.2f%s", value, units[index])
+end
+
+local function formatClock(seconds)
+	seconds = math.max(math.floor(seconds), 0)
+	local hours = math.floor(seconds / 3600)
+	local minutes = math.floor((seconds % 3600) / 60)
+	local secs = seconds % 60
+	return string.format("%02d:%02d:%02d", hours, minutes, secs)
+end
+
+-- WindUI replacement UI. Original automation logic below is kept intact.
+local LoadOk, WindUI = pcall(function()
+	return loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+end)
+
+if not LoadOk or type(WindUI) ~= "table" then
+	warn("[Ouroboros] WindUI failed to load: " .. tostring(WindUI))
+	return
+end
+
+local DiscordLink = "https://discord.gg/z4gh7wjp6Z"
+local Library = WindUI
+
+local PreviousLibrary = getgenv().OuroborosLibrary
+if PreviousLibrary and PreviousLibrary ~= WindUI then
+	pcall(function()
+		if PreviousLibrary.Unload then
+			PreviousLibrary:Unload()
+		elseif PreviousLibrary.Destroy then
+			PreviousLibrary:Destroy()
+		end
+	end)
+end
+getgenv().OuroborosLibrary = WindUI
+
+pcall(function()
+	WindUI:AddTheme({
+		Name = "FexozyBlue",
+		Accent = Color3.fromHex("#00CFFF"),
+		Background = WindUI:Gradient({
+			["0"] = { Color = Color3.fromHex("#101820"), Transparency = 0 },
+			["100"] = { Color = Color3.fromHex("#05070A"), Transparency = 0 },
+		}, { Rotation = 90 }),
+		Outline = Color3.fromHex("#23414D"),
+		Text = Color3.fromHex("#FFFFFF"),
+		Placeholder = Color3.fromHex("#8DA8B2"),
+		Button = Color3.fromHex("#102C38"),
+		Icon = Color3.fromHex("#57E6FF"),
+	})
+end)
+
+local Window = WindUI:CreateWindow({
+	Title = "F!exozy Hub X",
+	Icon = "rbxassetid://112028775617493",
+	Theme = "FexozyBlue",
+	ToggleKey = Enum.KeyCode.RightShift,
+	Folder = "FexozyHubX/JumpForAnimals",
+	Transparent = true,
+	Size = UDim2.fromOffset(580, 460),
+
+	-- โปรไฟล์ผู้เล่นแบบ WindUI
+	User = {
+		Enabled = true,
+		Anonymous = false,
+		Callback = function()
+			WindUI:Notify({
+				Title = "F!exozy Hub X",
+				Content = "ยินดีต้อนรับ, " .. LocalPlayer.Name .. "!",
+				Duration = 3,
+				Icon = "user",
+			})
+		end,
+	},
+})
+
+pcall(function()
+	Window:Tag({
+		Title = "Jump for Animals",
+		Icon = "star",
+		Color = Color3.fromRGB(0, 207, 255),
+	})
+	Window:Tag({
+		Title = "BATA 1.0",
+		Icon = "discord",
+		Color = Color3.fromRGB(85, 229, 255),
+	})
+end)
+
+pcall(function()
+	Window:EditOpenButton({
+		Title = "F!exozy Hub X",
+		Icon = "rbxassetid://112028775617493",
+		CornerRadius = UDim.new(0, 16),
+		StrokeThickness = 2,
+		Color = ColorSequence.new(
+			Color3.fromHex("#00CFFF"),
+			Color3.fromHex("#FFFFFF")
+		),
+		Draggable = true,
+	})
+end)
+
+pcall(function()
+	WindUI:Popup({
+		Title = "F!exozy Hub X",
+		Icon = "rbxassetid://112028775617493",
+		Content = "Jump for Animals | ระบบพร้อมใช้งาน",
+		Buttons = {
+			{
+				Title = "คัดลอก Discord",
+				Icon = "copy",
+				Callback = function()
+					if setclipboard then
+						setclipboard(DiscordLink)
+					end
+					WindUI:Notify({
+						Title = "คัดลอกแล้ว!",
+						Content = "คัดลอกลิงก์ Discord แล้ว",
+						Duration = 2,
+						Icon = "check",
+					})
+				end,
+			},
+			{
+				Title = "ดำเนินการต่อ",
+				Icon = "arrow-right",
+				Variant = "Primary",
+			},
+		},
+	})
+end)
+
+local MainTab = Window:Tab({ Title = "Home", Icon = "home" })
+local TrainingTab = Window:Tab({ Title = "Training", Icon = "dumbbell" })
+local EggsTab = Window:Tab({ Title = "Eggs", Icon = "egg" })
+local PetsTab = Window:Tab({ Title = "Pets", Icon = "paw-print" })
+local RewardsTab = Window:Tab({ Title = "Rewards", Icon = "gift" })
+local ShopTab = Window:Tab({ Title = "Shop", Icon = "shopping-cart" })
+local MutationTab = Window:Tab({ Title = "Mutation", Icon = "flask-conical" })
+local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
+
+local Options = {}
+local Toggles = {}
+local Elements = {}
+
+local function bindToggle(tab, key, title, desc, default)
+	local state = { Value = default == true, _changed = {} }
+
+	function state:OnChanged(callback)
+		if type(callback) == "function" then
+			table.insert(self._changed, callback)
+		end
+	end
+
+	Toggles[key] = state
+
+	local element = tab:Toggle({
+		Flag = key,
+		Title = title,
+		Desc = desc,
+		Value = state.Value,
+		Callback = function(value)
+			state.Value = value == true
+			for _, callback in ipairs(state._changed) do
+				pcall(callback, state.Value)
+			end
+		end,
+	})
+
+	Elements[key] = element
+	return state
+end
+
+local DropdownValueMaps = {
+	StealMode = {
+		["ไข่ดีที่สุด"] = "Best Egg",
+		["ไข่ใกล้ที่สุด"] = "Nearest Egg",
+		["ความหายากสูงสุด"] = "Highest Rarity",
+	},
+
+	StealRarities = {
+		["ทั่วไป"] = "Common",
+		["ไม่ธรรมดา"] = "Uncommon",
+		["หายาก"] = "Rare",
+		["Epic"] = "Epic",
+		["ตำนาน"] = "Legendary",
+		["Mythic"] = "Mythic",
+		["Divine"] = "Divine",
+		["Celestial"] = "Celestial",
+		["Eternal"] = "Eternal",
+	},
+
+	SellMode = {
+		["ขาย CPS ต่ำสุดก่อน"] = "Lowest CPS First",
+		["เลือกสัตว์เอง"] = "Chosen Pet",
+	},
+
+	MutationMode = {
+		["เลือกอัตโนมัติ"] = "Auto Select",
+		["เลือกสัตว์เอง"] = "Chosen Animal",
+	},
+
+	BuyCoilList = {
+		["คอยล์แดง"] = "Red Coil",
+		["คอยล์ลูกกวาด"] = "Candy Coil",
+		["คอยล์เหลือง"] = "Yellow Coil",
+		["คอยล์ช็อกโกแลต"] = "Chocolate Coil",
+	},
+
+	BuyTrailList = {
+		["เส้นฟ้า"] = "Blue Trail",
+		["เส้นแดง"] = "Red Trail",
+		["เส้นเขียว"] = "Green Trail",
+		["เส้นเหลือง"] = "Yellow Trail",
+		["เส้นม่วง"] = "Purple Trail",
+		["เส้นขาว"] = "White Trail",
+		["เส้นดำ"] = "Black Trail",
+		["เส้นกาแล็กซี"] = "Galaxy Trail",
+		["เส้นดาวแดงเข้ม"] = "Crimson Star Trail",
+		["เส้นสายรุ้ง"] = "Rainbow Trail",
+	},
+}
+
+DropdownValueMaps.StealZones = {}
+for i, zone in ipairs(ZoneNames) do
+	DropdownValueMaps.StealZones[ZoneNamesDisplay[i]] = zone
+end
+
+local function mapDropdownValue(key, value)
+	local mapping = DropdownValueMaps[key]
+	return mapping and mapping[value] or value
+end
+
+local function toSelectionMap(key, value)
+	if type(value) ~= "table" then
+		return mapDropdownValue(key, value)
+	end
+
+	local map = {}
+
+	for _, item in ipairs(value) do
+		map[mapDropdownValue(key, item)] = true
+	end
+
+	if next(map) == nil then
+		for item, selected in pairs(value) do
+			if type(item) == "string" and selected == true then
+				map[mapDropdownValue(key, item)] = true
+			end
+		end
+	end
+
+	return map
+end
+
+local function bindDropdown(tab, key, title, values, default, multi, desc)
+	Options[key] = {
+		Value = multi and toSelectionMap(key, default) or mapDropdownValue(key, default)
+	}
+
+	local element = tab:Dropdown({
+		Flag = key,
+		Title = title,
+		Desc = desc,
+		Values = values,
+		Value = default,
+		Multi = multi == true,
+		AllowNone = false,
+		Callback = function(value)
+			Options[key].Value = multi and toSelectionMap(key, value) or mapDropdownValue(key, value)
+		end,
+	})
+
+	Elements[key] = element
+	return Options[key]
+end
+
+local function bindSlider(tab, key, title, desc, min, max, default, step, suffix)
+	Options[key] = { Value = default }
+
+	local element = tab:Slider({
+		Flag = key,
+		Title = title,
+		Desc = desc,
+		Step = step or 1,
+		Value = {
+			Min = min,
+			Max = max,
+			Default = default,
+		},
+		Callback = function(value)
+			Options[key].Value = value
+		end,
+	})
+
+	Elements[key] = element
+	return Options[key]
+end
+
+local function bindInput(tab, key, title, desc, default, placeholder)
+	Options[key] = { Value = default }
+
+	local element = tab:Input({
+		Flag = key,
+		Title = title,
+		Desc = desc,
+		Value = tostring(default or ""),
+		Placeholder = placeholder or tostring(default or ""),
+		Callback = function(value)
+			Options[key].Value = value
+		end,
+	})
+
+	Elements[key] = element
+	return Options[key]
+end
+
+local function bindButton(tab, title, desc, callback, icon)
+	tab:Button({
+		Title = title,
+		Desc = desc,
+		Icon = icon,
+		Callback = callback,
+	})
+end
+
+local function copyDiscord()
+	if setclipboard then
+		setclipboard(DiscordLink)
+
+		WindUI:Notify({
+			Title = "คัดลอกแล้ว!",
+			Content = "คัดลอกลิงก์ Discord แล้ว",
+			Duration = 2,
+			Icon = "check",
+		})
+	else
+		WindUI:Notify({
+			Title = "Discord",
+			Content = DiscordLink,
+			Duration = 5,
+			Icon = "info",
+		})
+	end
+end
+
+local function notify(title, description, kind)
+	local icon = "info"
+
+	if kind == "Error" then
+		icon = "circle-x"
+	elseif kind == "Success" then
+		icon = "check"
+	end
+
+	WindUI:Notify({
+		Title = title,
+		Content = description,
+		Duration = 5,
+		Icon = icon,
+	})
+end
+
+-- =========================
+-- หน้าหลัก
+-- =========================
+
+MainTab:Section({
+	Title = "F!exozy Hub X",
+	Icon = "sparkles",
+})
+
+MainTab:Paragraph({
+	Title = LocalPlayer.DisplayName .. "  @" .. LocalPlayer.Name,
+	Desc = "โปรไฟล์ผู้เล่น • " .. GameName .. " • ระบบพร้อมใช้งาน",
+	Image = "rbxassetid://112028775617493",
+	ImageSize = 48,
+})
+
+MainTab:Paragraph({
+	Title = "Jump for Animals",
+	Desc = "รวมระบบทั้งหมดไว้เป็นหมวด • ใช้แท็บด้านบนเพื่อเลือกเฉพาะระบบที่ต้องการ",
+	Image = "rbxassetid://112028775617493",
+	ImageSize = 48,
+	Buttons = {
+		{
+			Title = "คัดลอก Discord",
+			Icon = "copy",
+			Callback = copyDiscord,
+		},
+	},
+})
+
+MainTab:Section({
+	Title = "สถานะ",
+	Icon = "activity",
+})
+
+local StatusParagraph = MainTab:Paragraph({
+	Title = "สถานะผู้เล่น",
+	Desc = "กำลังโหลด...",
+})
+
+local _statusLines = {
+	Session = "เวลาใช้งาน: 00:00:00",
+	Cash = "เงิน: 0",
+	Level = "เลเวล: 0",
+	Eggs = "ไข่ในตัว: 0 | วางแล้ว: 0",
+	Squat = "กำลังฝึก: ไม่",
+}
+
+local function refreshStatusParagraph()
+	if not StatusParagraph then
+		return
+	end
+
+	local desc = table.concat({
+		_statusLines.Session,
+		_statusLines.Cash,
+		_statusLines.Level,
+		_statusLines.Eggs,
+		_statusLines.Squat,
+	}, "\n")
+
+	pcall(function()
+		if StatusParagraph.SetDesc then
+			StatusParagraph:SetDesc(desc)
+		end
+	end)
+end
+
+local StatusSession = {
+	SetText = function(_, value)
+		_statusLines.Session = value
+		refreshStatusParagraph()
+	end,
+}
+
+local StatusCash = {
+	SetText = function(_, value)
+		_statusLines.Cash = value
+		refreshStatusParagraph()
+	end,
+}
+
+local StatusLevel = {
+	SetText = function(_, value)
+		_statusLines.Level = value
+		refreshStatusParagraph()
+	end,
+}
+
+local StatusEggs = {
+	SetText = function(_, value)
+		_statusLines.Eggs = value
+		refreshStatusParagraph()
+	end,
+}
+
+local StatusSquat = {
+	SetText = function(_, value)
+		_statusLines.Squat = value
+		refreshStatusParagraph()
+	end,
+}
+
+MainTab:Section({
+	Title = "คำสั่งด่วน",
+	Icon = "zap",
+})
+
+bindButton(
+	MainTab,
+	"คัดลอก Discord",
+	"คัดลอกลิงก์ Discord ของ F!exozy Hub X",
+	copyDiscord,
+	"copy"
+)
+
+-- =========================
+-- ฝึก
+-- =========================
+
+TrainingTab:Section({
+	Title = "ฝึกกระโดด",
+	Icon = "dumbbell",
+})
+
+bindToggle(
+	TrainingTab,
+	"AutoTrain",
+	"ฝึกกระโดดอัตโนมัติ",
+	"วาร์ปไปจุดฝึกและฝึกกระโดดเพื่อรับ XP อย่างต่อเนื่อง",
+	false
+)
+
+bindToggle(
+	TrainingTab,
+	"AutoSquatBonus",
+	"รับโบนัสการฝึกอัตโนมัติ",
+	"รับโบนัสจากการฝึกเมื่อพร้อมโดยอัตโนมัติ",
+	false
+)
+
+TrainingTab:Paragraph({
+	Title = "ระบบฝึก",
+	Desc = "เมื่อเปิดระบบ ระบบจะจัดการตำแหน่งและเริ่มการฝึกให้อัตโนมัติ",
+})
+
+-- =========================
+-- ไข่
+-- =========================
+
+EggsTab:Section({
+	Title = "ขโมยไข่",
+	Icon = "egg",
+})
+
+bindToggle(
+	EggsTab,
+	"AutoSteal",
+	"ขโมยไข่อัตโนมัติ",
+	"เก็บไข่แล้วกลับฐานเพื่อฝาก/วางต่ออัตโนมัติ",
+	false
+)
+
+bindDropdown(
+	EggsTab,
+	"StealMode",
+	"เป้าหมาย",
+	{ "ไข่ดีที่สุด", "ไข่ใกล้ที่สุด", "ความหายากสูงสุด" },
+	"ไข่ดีที่สุด",
+	false,
+	"เลือกรูปแบบการหาไข่ที่จะขโมย"
+)
+
+bindDropdown(
+	EggsTab,
+	"StealZones",
+	"โซน",
+	ZoneNamesDisplay,
+	ZoneNamesDisplay,
+	true,
+	"เลือกโซนที่อนุญาตให้ระบบค้นหาไข่"
+)
+
+bindDropdown(
+	EggsTab,
+	"StealRarities",
+	"ความหายาก",
+	{
+		"ทั่วไป",
+		"ไม่ธรรมดา",
+		"หายาก",
+		"Epic",
+		"ตำนาน",
+		"Mythic",
+		"Divine",
+		"Celestial",
+		"Eternal",
+	},
+	{
+		"ทั่วไป",
+		"ไม่ธรรมดา",
+		"หายาก",
+		"Epic",
+		"ตำนาน",
+		"Mythic",
+		"Divine",
+		"Celestial",
+		"Eternal",
+	},
+	true,
+	"เลือกเฉพาะระดับความหายากของไข่"
+)
+
+local StealDelaySlider = bindSlider(
+	EggsTab,
+	"StealDelay",
+	"เวลาฝึกระหว่างขโมย",
+	"หลังวางไข่ จะกลับไปฝึกตามเวลาที่กำหนดก่อนขโมยครั้งถัดไป",
+	0,
+	60,
+	5,
+	1,
+	"วินาที"
+)
+
+EggsTab:Section({
+	Title = "วางและฟัก",
+	Icon = "bird",
+})
+
+bindToggle(
+	EggsTab,
+	"AutoPlace",
+	"วางไข่อัตโนมัติ",
+	"นำไข่ที่ถืออยู่ไปวางที่ฐานโดยอัตโนมัติ",
+	false
+)
+
+bindToggle(
+	EggsTab,
+	"AutoHatch",
+	"ฟักไข่อัตโนมัติ",
+	"ฟักไข่ที่พร้อมฟักโดยอัตโนมัติ",
+	false
+)
+
+-- ค่าเริ่มต้นสำหรับตัวกรองไข่
+do
+	local zoneDefaults = {}
+	for _, zone in ipairs(ZoneNames) do
+		zoneDefaults[zone] = true
+	end
+
+	local rarityDefaults = {
+		Common = true,
+		Uncommon = true,
+		Rare = true,
+		Epic = true,
+		Legendary = true,
+		Mythic = true,
+		Divine = true,
+		Celestial = true,
+		Eternal = true,
+	}
+
+	if Options.StealZones then
+		Options.StealZones.Value = zoneDefaults
+	end
+
+	if Options.StealRarities then
+		Options.StealRarities.Value = rarityDefaults
+	end
+end
+
+-- =========================
+-- สัตว์
+-- =========================
+
+PetsTab:Section({
+	Title = "ขายสัตว์",
+	Icon = "coins",
+})
+
+bindToggle(
+	PetsTab,
+	"AutoSell",
+	"ขายสัตว์อัตโนมัติ",
+	"เลือกสัตว์แล้วเดินไปจุดขายและขายให้อัตโนมัติ",
+	false
+)
+
+bindDropdown(
+	PetsTab,
+	"SellMode",
+	"โหมดขาย",
+	{ "ขาย CPS ต่ำสุดก่อน", "เลือกสัตว์เอง" },
+	"ขาย CPS ต่ำสุดก่อน",
+	false,
+	"เลือกวิธีคัดสัตว์ที่จะขาย"
+)
+
+bindDropdown(
+	PetsTab,
+	"AutoSellPet",
+	"เลือกสัตว์",
+	AnimalNames,
+	AnimalNames[1],
+	false,
+	"ใช้เมื่อเลือกโหมดเลือกสัตว์เอง"
+)
+
+bindInput(
+	PetsTab,
+	"SellMaxCps",
+	"CPS สูงสุดที่จะขาย",
+	"โหมดขาย CPS ต่ำสุดก่อนจะไม่ขายสัตว์ที่ CPS สูงกว่าค่านี้",
+	"1000",
+	"1000"
+)
+
+PetsTab:Section({
+	Title = "ข้อมูล",
+	Icon = "info",
+})
+
+PetsTab:Paragraph({
+	Title = "การเลือกสัตว์",
+	Desc = "รายชื่อสัตว์จะอ่านจากสัตว์ที่มีอยู่ใน Backpack/ตัวละครของคุณตอนเริ่มสคริปต์",
+})
+
+-- =========================
+-- รางวัล
+-- =========================
+
+RewardsTab:Section({
+	Title = "รับรางวัล",
+	Icon = "gift",
+})
+
+bindToggle(
+	RewardsTab,
+	"AutoOffline",
+	"รับเงินออฟไลน์อัตโนมัติ",
+	"รับเงินที่ค้างจากช่วงออฟไลน์เมื่อพร้อม",
+	false
+)
+
+bindToggle(
+	RewardsTab,
+	"AutoIndex",
+	"รับรางวัล Animal Index อัตโนมัติ",
+	"รับรางวัล Animal Index ที่พร้อมทั้งหมดโดยอัตโนมัติ",
+	false
+)
+
+RewardsTab:Paragraph({
+	Title = "การทำงาน",
+	Desc = "ระบบจะตรวจสอบรางวัลเป็นระยะและรับให้อัตโนมัติเมื่อมีสิทธิ์รับ",
+})
+
+-- =========================
+-- ร้านค้า
+-- =========================
+
+ShopTab:Section({
+	Title = "คอยล์",
+	Icon = "gauge",
+})
+
+bindToggle(
+	ShopTab,
+	"AutoBuyCoils",
+	"ซื้อคอยล์อัตโนมัติ",
+	"ซื้อคอยล์ที่เลือกเมื่อมีเงินเพียงพอ",
+	false
+)
+
+bindDropdown(
+	ShopTab,
+	"BuyCoilList",
+	"รายการคอยล์",
+	{
+		"คอยล์แดง",
+		"คอยล์ลูกกวาด",
+		"คอยล์เหลือง",
+		"คอยล์ช็อกโกแลต",
+	},
+	{
+		"คอยล์แดง",
+		"คอยล์ลูกกวาด",
+		"คอยล์เหลือง",
+		"คอยล์ช็อกโกแลต",
+	},
+	true,
+	"เลือกคอยล์ที่ต้องการซื้อ"
+)
+
+bindToggle(
+	ShopTab,
+	"AutoEquipCoil",
+	"ใส่คอยล์ที่ดีที่สุดอัตโนมัติ",
+	"ใส่คอยล์ระดับสูงสุดที่มีอยู่",
+	false
+)
+
+ShopTab:Section({
+	Title = "Trail",
+	Icon = "wind",
+})
+
+bindToggle(
+	ShopTab,
+	"AutoBuyTrails",
+	"ซื้อ Trail อัตโนมัติ",
+	"ซื้อ Trail ที่เลือกเมื่อมีเงินเพียงพอ",
+	false
+)
+
+bindDropdown(
+	ShopTab,
+	"BuyTrailList",
+	"รายการ Trail",
+	TrailNamesDisplay,
+	TrailNamesDisplay,
+	true,
+	"เลือก Trail ที่ต้องการซื้อ"
+)
+
+bindToggle(
+	ShopTab,
+	"AutoEquipTrail",
+	"ใส่ Trail ที่ดีที่สุดอัตโนมัติ",
+	"ใส่ Trail ที่มีตัวคูณกระโดดสูงสุด",
+	false
+)
+
+ShopTab:Section({
+	Title = "บาร์เบล",
+	Icon = "dumbbell",
+})
+
+bindToggle(
+	ShopTab,
+	"AutoBarbell",
+	"อัปเกรดบาร์เบลอัตโนมัติ",
+	"ซื้อบาร์เบลระดับถัดไปเมื่อมีเงินเพียงพอ",
+	false
+)
+
+-- =========================
+-- Mutation
+-- =========================
+
+MutationTab:Section({
+	Title = "เครื่องกลายพันธุ์",
+	Icon = "flask-conical",
+})
+
+bindToggle(
+	MutationTab,
+	"AutoAddMutation",
+	"ใส่สัตว์เข้าเครื่องอัตโนมัติ",
+	"นำสัตว์ที่เข้าเกณฑ์ไปใส่เครื่องกลายพันธุ์อัตโนมัติ",
+	false
+)
+
+bindDropdown(
+	MutationTab,
+	"MutationMode",
+	"โหมดเลือกสัตว์",
+	{ "เลือกอัตโนมัติ", "เลือกสัตว์เอง" },
+	"เลือกอัตโนมัติ",
+	false,
+	"เลือกระหว่างเลือกสัตว์ซ้ำให้อัตโนมัติหรือกำหนดเอง"
+)
+
+bindDropdown(
+	MutationTab,
+	"MutationAnimal",
+	"สัตว์ที่เลือก",
+	AnimalNames,
+	AnimalNames[1],
+	false,
+	"ใช้เมื่อเลือกโหมดเลือกสัตว์เอง"
+)
+
+bindToggle(
+	MutationTab,
+	"AutoClaimMutation",
+	"รับสัตว์ทองอัตโนมัติ",
+	"รับสัตว์ทองที่ทำเสร็จแล้วโดยอัตโนมัติ",
+	false
+)
+
+bindToggle(
+	MutationTab,
+	"AutoReturnMutation",
+	"นำสัตว์ออกจากเครื่องอัตโนมัติ",
+	"นำสัตว์กลับจากเครื่องเมื่อสามารถนำออกได้",
+	false
+)
+
+MutationTab:Paragraph({
+	Title = "ลำดับการทำงาน",
+	Desc = "เมื่อพร้อมรับ จะรับก่อน จากนั้นจึงนำสัตว์ออกหรือเติมสัตว์ใหม่ตามตัวเลือกที่เปิดไว้",
+})
+
+-- =========================
+-- ตั้งค่า
+-- =========================
+
+SettingsTab:Section({
+	Title = "ทั่วไป",
+	Icon = "settings",
+})
+
+bindToggle(
+	SettingsTab,
+	"AntiAFK",
+	"ป้องกัน AFK",
+	"ช่วยป้องกันการถูกเตะออกเมื่อไม่มีการใช้งาน",
+	true
+)
+
+SettingsTab:Section({
+	Title = "เมนู",
+	Icon = "panel-top",
+})
+
+local KeybindElement = SettingsTab:Keybind({
+	Flag = "MenuKeybind",
+	Title = "ปุ่มเปิด/ปิดเมนู",
+	Desc = "กำหนดปุ่มที่ใช้เปิดหรือปิดเมนู",
+	Value = "RightShift",
+	Callback = function(value)
+		local ok, key = pcall(function()
+			return Enum.KeyCode[value]
+		end)
+
+		if ok and key then
+			pcall(function()
+				Window:SetToggleKey(key)
+			end)
+		end
+	end,
+})
+
+Elements.MenuKeybind = KeybindElement
+
+SettingsTab:Section({
+	Title = "คำสั่ง",
+	Icon = "zap",
+})
+
+bindButton(
+	SettingsTab,
+	"คัดลอก Discord",
+	"คัดลอกลิงก์ Discord",
+	copyDiscord,
+	"copy"
+)
+
+bindButton(
+	SettingsTab,
+	"รีเซ็ตระบบอัตโนมัติ",
+	"ปิดระบบอัตโนมัติทั้งหมด",
+	function()
+		for _, key in ipairs({
+			"AutoTrain",
+			"AutoSquatBonus",
+			"AutoSteal",
+			"AutoPlace",
+			"AutoHatch",
+			"AutoSell",
+			"AutoOffline",
+			"AutoIndex",
+			"AutoBuyCoils",
+			"AutoEquipCoil",
+			"AutoBuyTrails",
+			"AutoEquipTrail",
+			"AutoBarbell",
+			"AutoAddMutation",
+			"AutoClaimMutation",
+			"AutoReturnMutation",
+		}) do
+			local state = Toggles[key]
+
+			if state then
+				state.Value = false
+
+				for _, callback in ipairs(state._changed or {}) do
+					pcall(callback, false)
+				end
+			end
+		end
+
+		WindUI:Notify({
+			Title = "Settings",
+			Content = "ปิดระบบอัตโนมัติทั้งหมดแล้ว",
+			Duration = 2,
+			Icon = "refresh-cw",
+		})
+	end,
+	"refresh-cw"
+)
+
+SettingsTab:Section({
+	Title = "การตั้งค่า",
+	Icon = "save",
+})
+
+local ConfigManager = Window.ConfigManager
+local ConfigName = "default"
+
+SettingsTab:Input({
+	Title = "ชื่อไฟล์การตั้งค่า",
+	Desc = "ชื่อไฟล์สำหรับบันทึกการตั้งค่า",
+	Value = ConfigName,
+	Placeholder = "default",
+	Callback = function(value)
+		ConfigName = tostring(value or "default")
+	end,
+})
+
+local function configSave()
+	if not ConfigManager then
+		return WindUI:Notify({
+			Title = "การตั้งค่า",
+			Content = "ConfigManager ไม่พร้อมใช้งาน",
+			Duration = 3,
+			Icon = "circle-x",
+		})
+	end
+
+	local ok, err = pcall(function()
+		ConfigManager:Init(Window)
+
+		local config = ConfigManager:CreateConfig(ConfigName)
+		if not config then
+			error("CreateConfig failed")
+		end
+
+		local result = config:Save()
+		if result == false then
+			error("Save failed")
+		end
+	end)
+
+	if ok then
+		WindUI:Notify({
+			Title = "การตั้งค่า",
+			Content = "บันทึก " .. ConfigName .. " แล้ว",
+			Duration = 2,
+			Icon = "check",
+		})
+	else
+		WindUI:Notify({
+			Title = "การตั้งค่า",
+			Content = "บันทึกไม่สำเร็จ: " .. tostring(err),
+			Duration = 4,
+			Icon = "circle-x",
+		})
+	end
+end
+
+local function configLoad()
+	if not ConfigManager then
+		return WindUI:Notify({
+			Title = "การตั้งค่า",
+			Content = "ConfigManager ไม่พร้อมใช้งาน",
+			Duration = 3,
+			Icon = "circle-x",
+		})
+	end
+
+	local ok, err = pcall(function()
+		ConfigManager:Init(Window)
+
+		local config = ConfigManager:CreateConfig(ConfigName)
+		if not config then
+			error("CreateConfig failed")
+		end
+
+		local result = config:Load()
+		if not result then
+			error("Load failed")
+		end
+	end)
+
+	if ok then
+		WindUI:Notify({
+			Title = "การตั้งค่า",
+			Content = "โหลด " .. ConfigName .. " แล้ว",
+			Duration = 2,
+			Icon = "refresh-cw",
+		})
+	else
+		WindUI:Notify({
+			Title = "การตั้งค่า",
+			Content = "โหลดไม่สำเร็จ: " .. tostring(err),
+			Duration = 4,
+			Icon = "circle-x",
+		})
+	end
+end
+
+bindButton(
+	SettingsTab,
+	"บันทึกการตั้งค่า",
+	"บันทึกค่าปัจจุบัน",
+	configSave,
+	"save"
+)
+
+bindButton(
+	SettingsTab,
+	"โหลดการตั้งค่า",
+	"โหลดค่าที่บันทึกไว้",
+	configLoad,
+	"folder-open"
+)
+
+pcall(function()
+	Window:OnDestroy(function()
+		if getgenv().OuroborosLibrary == WindUI then
+			getgenv().OuroborosLibrary = nil
+		end
+	end)
+end)
+
+local function isSelected(selection, value)
+	if type(selection) ~= "table" then
+		return true
+	end
+	local count = 0
+	for _ in pairs(selection) do
+		count += 1
+	end
+	if count == 0 then
+		return true
+	end
+	return selection[value] == true
+end
+
+local function zoneReachable(zone)
+	local required = ZoneJumpRequirements[zone]
+	if required == nil then
+		return true
+	end
+	local jumpPower = LocalPlayer:FindFirstChild("JumpPower")
+	jumpPower = jumpPower and tonumber(jumpPower.Value) or 0
+	return jumpPower >= required
+end
+
+local function findEggPrompt(mode)
+	local map = workspace:FindFirstChild("Map")
+	local stages = map and map:FindFirstChild("Stages")
+	if not stages then
+		return nil, nil
+	end
+	local root = getRoot()
+	local origin = root and root.Position or Vector3.zero
+	local zoneFilter = Options.StealZones and Options.StealZones.Value or nil
+	local rarityFilter = Options.StealRarities and Options.StealRarities.Value or nil
+	local bestPrompt, bestScore, bestPosition
+	for _, stage in ipairs(stages:GetChildren()) do
+		local spawned = stage:FindFirstChild("SpawnedEggs")
+		if spawned and isSelected(zoneFilter, stage.Name) then
+			for _, egg in ipairs(spawned:GetChildren()) do
+				local rarity = egg:GetAttribute("Rarity")
+				if isSelected(rarityFilter, rarity) then
+					local prompt = egg:FindFirstChildWhichIsA("ProximityPrompt", true)
+					if prompt and prompt.Enabled then
+						local worldPosition = holderPosition(prompt.Parent)
+						if worldPosition then
+							local distance = (worldPosition - origin).Magnitude
+							local rarityIndex = 0
+							if Rarities and Rarities.GetIndex then
+								rarityIndex = Rarities.GetIndex(rarity) or 0
+							end
+							local score
+							if mode == "Nearest Egg" then
+								score = -distance
+							elseif mode == "Best Egg" then
+								if not zoneReachable(stage.Name) then
+									continue
+								end
+								score = rarityIndex * 1000000 - distance * 0.001
+							else
+								score = rarityIndex * 1000000 - distance * 0.001
+							end
+							if not bestScore or score > bestScore then
+								bestPrompt, bestScore, bestPosition = prompt, score, worldPosition
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	return bestPrompt, bestPosition
+end
+
+local LastIndexClaim = 0
+local LastBarbellAction = 0
+local CarryWatchSince = nil
+local NextStealAt = 0
+local NextPlaceAttempt = 0
+local PlaceRotation = 0
+
+local function doCarryRecovery()
+	if not Toggles.AutoSteal.Value and not Toggles.AutoPlace.Value then
+		CarryWatchSince = nil
+		return
+	end
+	local carried = (tonumber(LocalPlayer:GetAttribute("CarriedEggCount")) or 0) > 0
+	local tool = findTool(isEggTool)
+	if carried and not tool then
+		local base = getPlacementDetector()
+		local root = getRoot()
+		if base and root and (root.Position - base.Position).Magnitude > 40 then
+			teleportTo(base.Position)
+			task.wait(0.4)
+		end
+		if not CarryWatchSince then
+			CarryWatchSince = os.clock()
+		elseif os.clock() - CarryWatchSince > 30 and DropEggRequest then
+			DropEggRequest:FireServer()
+			CarryWatchSince = os.clock()
+			task.wait(0.5)
+		end
+	else
+		CarryWatchSince = nil
+	end
+end
+
+local function doAutoTrain()
+	if not Toggles.AutoTrain.Value then
+		return
+	end
+	if Toggles.AutoHatch.Value and countReadyEggs() > 0 then
+		if LocalPlayer:GetAttribute("IsSquatting") == true and StopSquattingRequest then
+			StopSquattingRequest:FireServer()
+		end
+		return
+	end
+	if Toggles.AutoSteal.Value and (tonumber(LocalPlayer:GetAttribute("CarriedEggCount")) or 0) > 0 then
+		return
+	end
+	local detector = getSquatDetector()
+	local root = getRoot()
+	if not detector or not root then
+		return
+	end
+	if (root.Position - detector.Position).Magnitude > 10 then
+		teleportTo(detector.Position)
+		task.wait(0.3)
+	end
+	if LocalPlayer:GetAttribute("IsSquatting") ~= true and SquatTrainingRequest then
+		SquatTrainingRequest:FireServer(detector)
+		task.wait(0.25)
+	end
+end
+
+local LastBonusClaim = 0
+local function doAutoSquatBonus()
+	if not Toggles.AutoSquatBonus.Value or not SquatBonusRequest then
+		return
+	end
+	if LocalPlayer:GetAttribute("SquatBonusAvailable") ~= true then
+		return
+	end
+	if os.clock() - LastBonusClaim < 0.4 then
+		return
+	end
+	LastBonusClaim = os.clock()
+	local version = math.floor(tonumber(LocalPlayer:GetAttribute("SquatBonusVersion")) or 0)
+	SquatBonusRequest:FireServer(version)
+end
+
+local function doAutoPlace()
+	if not Toggles.AutoPlace.Value or not PlaceEggRequest then
+		return
+	end
+	if os.clock() < NextPlaceAttempt then
+		return
+	end
+	local list = {}
+	forEachContainer(function(container)
+		for _, child in ipairs(container:GetChildren()) do
+			if isEggTool(child) then
+				table.insert(list, child)
+			end
+		end
+	end)
+	if #list == 0 then
+		return
+	end
+	PlaceRotation += 1
+	local carrying = list[(PlaceRotation % #list) + 1]
+	local humanoid = getHumanoid()
+	local detector = getPlacementDetector()
+	if not humanoid or not detector then
+		return
+	end
+	NextPlaceAttempt = os.clock() + 2
+	pcall(function()
+		humanoid:EquipTool(carrying)
+	end)
+	task.wait(0.2)
+	PlaceEggRequest:FireServer(carrying:GetAttribute("EggId"), detector.Position + Vector3.new(0, 2, 0))
+	task.wait(0.35)
+	if not carrying.Parent then
+		local delay = StealDelaySlider and tonumber(StealDelaySlider.Value) or 5
+		NextStealAt = os.clock() + math.max(delay, 0)
+	end
+end
+
+local function doAutoSteal()
+	if not Toggles.AutoSteal.Value then
+		return
+	end
+	if os.clock() < NextStealAt then
+		return
+	end
+	if countEggTools() >= 3 then
+		return
+	end
+	if (tonumber(LocalPlayer:GetAttribute("CarriedEggCount")) or 0) > 0 then
+		return
+	end
+	local prompt, position = findEggPrompt(Options.StealMode.Value)
+	if not prompt or not position then
+		return
+	end
+	if LocalPlayer:GetAttribute("IsSquatting") == true and StopSquattingRequest then
+		StopSquattingRequest:FireServer()
+		local deadline = os.clock() + 1.5
+		while LocalPlayer:GetAttribute("IsSquatting") == true and os.clock() < deadline do
+			task.wait(0.15)
+		end
+	end
+	teleportTo(position)
+	task.wait(0.35)
+	if prompt.Enabled then
+		fireproximityprompt(prompt)
+	end
+	task.wait(0.4)
+	local base = getPlacementDetector()
+	if base then
+		teleportTo(base.Position)
+		task.wait(0.6)
+	end
+end
+
+local function doAutoHatch()
+	if not Toggles.AutoHatch.Value then
+		return
+	end
+	local plot = getPlot()
+	local placed = plot and plot:FindFirstChild("PlacedEggs")
+	if not placed then
+		return
+	end
+	for _, egg in ipairs(placed:GetChildren()) do
+		if egg:GetAttribute("HatchReady") == true then
+			local prompt = egg:FindFirstChildWhichIsA("ProximityPrompt", true)
+			if prompt and prompt.Enabled then
+				local position = holderPosition(prompt.Parent)
+				if position then
+					teleportTo(position)
+					task.wait(0.25)
+				end
+				fireproximityprompt(prompt)
+				task.wait(0.35)
+				return
+			end
+		end
+	end
+end
+
+local function findSellTarget()
+	local mode = Options.SellMode.Value
+	local chosen = Options.AutoSellPet.Value
+	local maxCps = tonumber(Options.SellMaxCps.Value) or 1000
+	local bestTool, bestCps
+	forEachContainer(function(container)
+		for _, child in ipairs(container:GetChildren()) do
+			if isPetTool(child) then
+				local name = child:GetAttribute("AnimalName") or child.Name
+				local cps = tonumber(child:GetAttribute("CashPerSecond")) or math.huge
+				if mode == "Chosen Pet" then
+					if name == chosen and (not bestCps or cps < bestCps) then
+						bestTool, bestCps = child, cps
+					end
+				elseif cps <= maxCps and (not bestCps or cps < bestCps) then
+					bestTool, bestCps = child, cps
+				end
+			end
+		end
+	end)
+	return bestTool
+end
+
+local function doAutoSell()
+	if not Toggles.AutoSell.Value then
+		return
+	end
+	if findTool(isEggTool) then
+		return
+	end
+	local tool = findSellTarget()
+	if not tool then
+		return
+	end
+	local humanoid = getHumanoid()
+	if not humanoid then
+		return
+	end
+	pcall(function()
+		humanoid:EquipTool(tool)
+	end)
+	local sellRoot = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Sell")
+	local detector = sellRoot and sellRoot:FindFirstChild("Detector", true)
+	if detector and detector:IsA("BasePart") then
+		teleportTo(detector.Position)
+		task.wait(0.3)
+	end
+	local prompt = detector and detector:FindFirstChild("SellAnimalPrompt", true)
+	if prompt and prompt.Enabled then
+		fireproximityprompt(prompt)
+	elseif SellRemote then
+		SellRemote:FireServer()
+	end
+	task.wait(0.4)
+end
+
+local function doAutoOffline()
+	if not Toggles.AutoOffline.Value or not OfflineRewardsRemote then
+		return
+	end
+	local pending = tonumber(LocalPlayer:GetAttribute("OfflineCashPending")) or 0
+	if pending > 0 then
+		OfflineRewardsRemote:FireServer("Claim")
+		task.wait(0.25)
+	end
+end
+
+local function doAutoIndex()
+	if not Toggles.AutoIndex.Value or not IndexRewardRemote then
+		return
+	end
+	if os.clock() - LastIndexClaim < 15 then
+		return
+	end
+	LastIndexClaim = os.clock()
+	IndexRewardRemote:FireServer("__ALL__")
+end
+
+local function ownedValue(folder, name)
+	local entry = folder and folder:FindFirstChild(name)
+	return entry and entry.Value == true
+end
+
+local function doAutoCoils()
+	local coilData = LocalPlayer:FindFirstChild("CoilData")
+	if not coilData or not CoilsRemote then
+		return
+	end
+	local owned = coilData:FindFirstChild("Owned")
+	local equipped = coilData:FindFirstChild("Equipped")
+	if Toggles.AutoBuyCoils.Value and SpeedUpgrades then
+		local selected = Options.BuyCoilList.Value
+		if type(selected) == "table" then
+			for name in pairs(selected) do
+				local config = SpeedUpgrades.Get(name)
+				if config and not ownedValue(owned, name) and getCash() >= config.Cost then
+					CoilsRemote:FireServer("Select", name)
+					task.wait(0.25)
+				end
+			end
+		end
+	end
+	if Toggles.AutoEquipCoil.Value and SpeedUpgrades and equipped then
+		local bestName, bestOrder = nil, -1
+		if owned then
+			for _, entry in ipairs(owned:GetChildren()) do
+				if entry.Value == true then
+					local config = SpeedUpgrades.Get(entry.Name)
+					local order = config and config.Order or 0
+					if order > bestOrder then
+						bestName, bestOrder = entry.Name, order
+					end
+				end
+			end
+		end
+		if bestName and equipped.Value ~= bestName then
+			CoilsRemote:FireServer("Select", bestName)
+			task.wait(0.2)
+		end
+	end
+end
+
+local function doAutoTrails()
+	local trailData = LocalPlayer:FindFirstChild("TrailData")
+	if not trailData or not TrailsRemote then
+		return
+	end
+	local owned = trailData:FindFirstChild("Owned")
+	local equipped = trailData:FindFirstChild("Equipped")
+	if Toggles.AutoBuyTrails.Value and TrailSettings then
+		local selected = Options.BuyTrailList.Value
+		if type(selected) == "table" then
+			for name in pairs(selected) do
+				local config = TrailSettings.Get(name)
+				if config and not ownedValue(owned, name) and getCash() >= config.Cost then
+					TrailsRemote:FireServer("Select", name)
+					task.wait(0.25)
+				end
+			end
+		end
+	end
+	if Toggles.AutoEquipTrail.Value and TrailSettings and equipped then
+		local bestName, bestOrder = nil, -1
+		if owned then
+			for _, entry in ipairs(owned:GetChildren()) do
+				if entry.Value == true then
+					local config = TrailSettings.Get(entry.Name)
+					local order = config and config.Order or 0
+					if order > bestOrder then
+						bestName, bestOrder = entry.Name, order
+					end
+				end
+			end
+		end
+		if bestName and equipped.Value ~= bestName then
+			TrailsRemote:FireServer("Select", bestName)
+			task.wait(0.2)
+		end
+	end
+end
+
+local function doAutoBarbell()
+	if not Toggles.AutoBarbell.Value or not BarbellUpgrades or not BarbellUpgrades.GetNext then
+		return
+	end
+	if os.clock() - LastBarbellAction < 3 then
+		return
+	end
+	LastBarbellAction = os.clock()
+	local level = LocalPlayer:FindFirstChild("BarbellLevel")
+	if not level then
+		return
+	end
+	local nextUpgrade = BarbellUpgrades.GetNext(math.max(math.floor(tonumber(level.Value) or 1), 1))
+	if not nextUpgrade then
+		return
+	end
+	local price = tonumber(nextUpgrade.CashPrice) or 0
+	if getCash() < price then
+		return
+	end
+	local plot = getPlot()
+	local zone = plot and plot:FindFirstChild("SquatZone")
+	local upgradeB = zone and zone:FindFirstChild("UpgradeB")
+	local prompt = upgradeB and upgradeB:FindFirstChild("BarbellUpgradePrompt", true)
+	if not prompt or not prompt.Enabled then
+		return
+	end
+	local position = holderPosition(prompt.Parent)
+	if position then
+		teleportTo(position)
+		task.wait(0.25)
+	end
+	fireproximityprompt(prompt)
+	task.wait(0.4)
+end
+
+local function findMutationPet(targetName)
+	local candidate, candidateCps
+	forEachContainer(function(container)
+		for _, child in ipairs(container:GetChildren()) do
+			if isPetTool(child) then
+				local name = child:GetAttribute("AnimalName") or child.Name
+				local cps = tonumber(child:GetAttribute("CashPerSecond")) or math.huge
+				if name == targetName and (not candidateCps or cps < candidateCps) then
+					candidate, candidateCps = child, cps
+				end
+			end
+		end
+	end)
+	return candidate
+end
+
+local function findDuplicateAnimal()
+	local counts, lowest = {}, {}
+	forEachContainer(function(container)
+		for _, child in ipairs(container:GetChildren()) do
+			if isPetTool(child) then
+				local name = child:GetAttribute("AnimalName") or child.Name
+				local cps = tonumber(child:GetAttribute("CashPerSecond")) or math.huge
+				counts[name] = (counts[name] or 0) + 1
+				if not lowest[name] or cps < lowest[name] then
+					lowest[name] = cps
+				end
+			end
+		end
+	end)
+	local bestName, bestCps
+	for name, count in pairs(counts) do
+		if count >= 2 and (not bestCps or lowest[name] < bestCps) then
+			bestName, bestCps = name, lowest[name]
+		end
+	end
+	return bestName
+end
+
+local function mutationPromptByName(name)
+	local map = workspace:FindFirstChild("Map")
+	local mutations = map and map:FindFirstChild("Mutations")
+	local detector = mutations and mutations:FindFirstChild("Detector")
+	local prompt = detector and detector:FindFirstChild(name, true)
+	return prompt, detector
+end
+
+local function fireMutation(name, detector)
+	local prompt = detector and detector:FindFirstChild(name, true)
+	if not prompt or not prompt.Enabled then
+		return false
+	end
+	local position = holderPosition(prompt.Parent)
+	if position then
+		teleportTo(position)
+		task.wait(0.2)
+	end
+	fireproximityprompt(prompt)
+	task.wait(0.35)
+	return true
+end
+
+local function doAutoMutation()
+	local active = LocalPlayer:GetAttribute("MutationCraftActive") == true
+	local ready = LocalPlayer:GetAttribute("MutationCraftReady") == true
+	local canRemove = LocalPlayer:GetAttribute("MutationCanRemove") == true
+	local _, detector = mutationPromptByName("MutationPrompt")
+	if Toggles.AutoClaimMutation.Value and active and ready then
+		fireMutation("MutationPrompt", detector)
+		return
+	end
+	if Toggles.AutoReturnMutation.Value and active and canRemove then
+		fireMutation("MutationRemovePrompt", detector)
+		return
+	end
+	if not Toggles.AutoAddMutation.Value or active then
+		return
+	end
+	local target = LocalPlayer:GetAttribute("MutationCraftAnimalName")
+	if type(target) ~= "string" or target == "" then
+		if Options.MutationMode.Value == "Chosen Animal" then
+			target = Options.MutationAnimal.Value
+		else
+			target = findDuplicateAnimal()
+		end
+	end
+	if not target or target == "None" then
+		return
+	end
+	local tool = findMutationPet(target)
+	if not tool then
+		return
+	end
+	local humanoid = getHumanoid()
+	if not humanoid then
+		return
+	end
+	pcall(function()
+		humanoid:EquipTool(tool)
+	end)
+	task.wait(0.2)
+	fireMutation("MutationPrompt", detector)
+end
+
+if Toggles.AutoTrain and Toggles.AutoTrain.OnChanged then
+	Toggles.AutoTrain:OnChanged(function(value)
+		if value == false and LocalPlayer:GetAttribute("IsSquatting") == true and StopSquattingRequest then
+			StopSquattingRequest:FireServer()
+		end
+	end)
+end
+
+local function featureLoop(fn)
+	task.spawn(function()
+		while alive() do
+			local success, err = pcall(fn)
+			if not success and alive() then
+				warn("[Ouroboros] " .. tostring(err))
+			end
+			task.wait(0.5)
+		end
+	end)
+end
+
+featureLoop(function()
+	doCarryRecovery()
+	doAutoPlace()
+	doAutoSteal()
+	doAutoSell()
+	doAutoTrain()
+	doAutoSquatBonus()
+	doAutoHatch()
+	doAutoBarbell()
+end)
+
+featureLoop(function()
+	doAutoOffline()
+	doAutoIndex()
+	doAutoCoils()
+	doAutoTrails()
+end)
+
+task.spawn(function()
+	while alive() do
+		local success, err = pcall(doAutoMutation)
+		if not success and alive() then
+			warn("[Ouroboros] " .. tostring(err))
+		end
+		task.wait(6)
+	end
+end)
+
+task.spawn(function()
+	while alive() do
+		task.wait(300)
+		if alive() and Toggles.AntiAFK.Value then
+			pcall(function()
+				local humanoid = getHumanoid()
+				if humanoid then
+					humanoid.Jump = true
+				end
+				local virtualUser = game:GetService("VirtualUser")
+				virtualUser:CaptureController()
+				virtualUser:ClickButton2(Vector2.new())
+			end)
+		end
+	end
+end)
+
+task.spawn(function()
+	while alive() do
+		pcall(function()
+			StatusSession:SetText("เวลาใช้งาน: " .. formatClock(os.clock() - StartedAt))
+			StatusCash:SetText("เงิน: " .. abbreviate(getCash()))
+			StatusLevel:SetText("เลเวล: " .. tostring(getLevel()))
+			StatusEggs:SetText(string.format("ไข่ในตัว: %d | วางแล้ว: %d", countEggTools(), countPlacedEggs()))
+			StatusSquat:SetText("กำลังฝึก: " .. tostring(LocalPlayer:GetAttribute("IsSquatting") == true))
+		end)
+		task.wait(1)
+	end
+end)
+
+notify("F!exozy Hub X", "โหลดระบบ " .. GameName .. " สำเร็จ | ใช้ปุ่มที่ตั้งไว้เพื่อเปิด/ปิดเมนู")
