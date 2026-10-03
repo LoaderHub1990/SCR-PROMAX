@@ -1,0 +1,947 @@
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+
+local LocalPlayer = Players.LocalPlayer
+
+local CONFIG = {
+    Name = "Flexozy Hub X",
+    Logo = "rbxassetid://135253158468501",
+    Discord = "https://discord.gg/WFUejxeggt",
+    DiscordCode = "WFUejxeggt",
+    Version = "3.3.3",
+    Accent = Color3.fromRGB(0, 207, 255),
+    Accent2 = Color3.fromRGB(85, 229, 255),
+}
+
+local function GetRequestFunction()
+    if typeof(request) == "function" then
+        return request
+    end
+
+    if typeof(http_request) == "function" then
+        return http_request
+    end
+
+    if syn and typeof(syn.request) == "function" then
+        return syn.request
+    end
+
+    if http and typeof(http.request) == "function" then
+        return http.request
+    end
+
+    return nil
+end
+
+local function FormatNumber(n)
+    local s = tostring(math.floor(n))
+    local result = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+    return (result:gsub("^,", ""))
+end
+
+local DiscordInfo = {
+    Name = "Flexozy Community",
+    Online = "N/A",
+    Members = "N/A",
+    Inviter = "-",
+    Icon = CONFIG.Logo,
+}
+
+local function FetchDiscord()
+    local Req = GetRequestFunction()
+
+    if not Req then
+        return
+    end
+
+    local ok, res = pcall(Req, {
+        Url = "https://discord.com/api/v10/invites/"
+            .. CONFIG.DiscordCode
+            .. "?with_counts=true",
+        Method = "GET"
+    })
+
+    if not (ok and res and res.StatusCode == 200 and res.Body) then
+        return
+    end
+
+    local okJson, data = pcall(function()
+        return HttpService:JSONDecode(res.Body)
+    end)
+
+    if not okJson or type(data) ~= "table" then
+        return
+    end
+
+    local guild = data.guild
+
+    if type(guild) == "table" and guild.name then
+        DiscordInfo.Name = tostring(guild.name)
+    end
+
+    DiscordInfo.Online = FormatNumber(data.approximate_presence_count or 0)
+    DiscordInfo.Members = FormatNumber(data.approximate_member_count or 0)
+
+    local inviter = data.inviter
+
+    if type(inviter) == "table" then
+        DiscordInfo.Inviter = tostring(
+            inviter.global_name
+            or inviter.username
+            or "Unknown"
+        )
+    end
+
+    local getAsset = getcustomasset or getsynasset
+
+    if type(guild) == "table"
+        and guild.icon
+        and writefile
+        and getAsset then
+
+        pcall(function()
+            local iconRes = Req({
+                Url = string.format(
+                    "https://cdn.discordapp.com/icons/%s/%s.png?size=128",
+                    tostring(guild.id),
+                    tostring(guild.icon)
+                ),
+                Method = "GET"
+            })
+
+            if iconRes
+                and iconRes.StatusCode == 200
+                and iconRes.Body
+                and #iconRes.Body > 0 then
+
+                local fileName = "flexozy_discord_" .. CONFIG.DiscordCode .. ".png"
+                writefile(fileName, iconRes.Body)
+                DiscordInfo.Icon = getAsset(fileName)
+            end
+        end)
+    end
+end
+
+pcall(FetchDiscord)
+
+local function DiscordDesc()
+    return string.format(
+        "Online: %s   |   Members: %s\nInvite by: %s",
+        DiscordInfo.Online,
+        DiscordInfo.Members,
+        DiscordInfo.Inviter
+    )
+end
+
+local WindUI = loadstring(game:HttpGet(
+    "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
+))()
+
+WindUI:AddTheme({
+    Name = "FlexozyTheme",
+    Accent = CONFIG.Accent,
+    Background = WindUI:Gradient({
+        ["0"] = {
+            Color = Color3.fromHex("#123B52"),
+            Transparency = 0
+        },
+        ["100"] = {
+            Color = Color3.fromHex("#071D2B"),
+            Transparency = 0
+        },
+    }, {
+        Rotation = 90
+    }),
+    Outline = CONFIG.Accent2,
+    Text = Color3.fromRGB(255, 255, 255),
+    Placeholder = Color3.fromRGB(157, 217, 232),
+    Button = Color3.fromRGB(21, 80, 106),
+    Icon = CONFIG.Accent2,
+})
+
+local Character
+local Humanoid
+local Root
+
+local function UpdateCharacter(char)
+    Character = char
+    Humanoid = char:WaitForChild("Humanoid")
+    Root = char:WaitForChild("HumanoidRootPart")
+end
+
+if LocalPlayer.Character then
+    UpdateCharacter(LocalPlayer.Character)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.2)
+    UpdateCharacter(char)
+end)
+
+local function IsFriend(player)
+    local ok, result = pcall(function()
+        return LocalPlayer:IsFriendsWith(player.UserId)
+    end)
+    return ok and result
+end
+
+local function CopyDiscord(duration)
+    if setclipboard then
+        setclipboard(CONFIG.Discord)
+        WindUI:Notify({
+            Title = "คัดลอกสำเร็จ",
+            Content = "คัดลอกลิงก์ Discord แล้ว",
+            Duration = duration or 2,
+            Icon = "check"
+        })
+    else
+        WindUI:Notify({
+            Title = "ไม่สามารถคัดลอกได้",
+            Content = "Executor ไม่รองรับ Clipboard",
+            Duration = 3,
+            Icon = "x"
+        })
+    end
+end
+
+local Window = WindUI:CreateWindow({
+    Title =
+        '<font color="#00BFFF">F</font>' ..
+        '<font color="#18C5FF">!</font>' ..
+        '<font color="#30CBFF">e</font>' ..
+        '<font color="#48D1FF">x</font>' ..
+        '<font color="#60D7FF">o</font>' ..
+        '<font color="#78DDFF">z</font>' ..
+        '<font color="#90E3FF">y</font> ' ..
+        '<font color="#A8E9FF">H</font>' ..
+        '<font color="#C0EFFF">u</font>' ..
+        '<font color="#D8F7FF">b</font> ' ..
+        '<font color="#FFFFFF">X</font>',
+    Icon = CONFIG.Logo,
+    Author = "Flexozy Hub X",
+    Size = UDim2.fromOffset(580, 460),
+    Transparent = true,
+    Theme = "FlexozyTheme",
+    SideBarWidth = 200,
+    User = {
+        Enabled = true,
+        Anonymous = false,
+        Callback = function()
+            WindUI:Notify({
+                Title = "Flexozy Hub X",
+                Content = "ยินดีต้อนรับ, " .. LocalPlayer.Name .. "!",
+                Duration = 3,
+                Icon = "check"
+            })
+        end
+    }
+})
+
+Window:EditOpenButton({
+    Title = CONFIG.Name,
+    Icon = CONFIG.Logo,
+    CornerRadius = UDim.new(0, 16),
+    StrokeThickness = 2,
+    Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromHex("#06384A")),
+        ColorSequenceKeypoint.new(0.35, Color3.fromHex("#007EA7")),
+        ColorSequenceKeypoint.new(0.65, Color3.fromHex("#00BFFF")),
+        ColorSequenceKeypoint.new(1, Color3.fromHex("#55E5FF")),
+    }),
+    OnlyMobile = false,
+    Enabled = true,
+    Draggable = true,
+})
+
+WindUI:Popup({
+    Title = "Flexozy Hub X",
+    Icon = "info",
+    Content = DiscordInfo.Name .. "\n" .. DiscordDesc() .. "\nกดปุ่มคัดลอกเพื่อคัดลอกลิงก์",
+    Buttons = {
+        {
+            Title = "คัดลอก Discord",
+            Icon = "copy",
+            Callback = function()
+                CopyDiscord(3)
+            end,
+            Variant = "Tertiary",
+        },
+        {
+            Title = "ดำเนินการต่อ",
+            Icon = "arrow-right",
+            Callback = function() end,
+            Variant = "Primary",
+        }
+    }
+})
+
+Window:Tag({
+    Title = "Version " .. CONFIG.Version,
+    Icon = "star",
+    Color = CONFIG.Accent
+})
+
+Window:Tag({
+    Title = "Doomspire Brickbattle",
+    Icon = "rocket",
+    Color = CONFIG.Accent2
+})
+
+local MainTab = Window:Tab({
+    Title = "Main",
+    Icon = "home"
+})
+
+local ESPTab = Window:Tab({
+    Title = "ESP",
+    Icon = "eye"
+})
+
+local PlayerTab = Window:Tab({
+    Title = "Player",
+    Icon = "user"
+})
+
+local TeleportTab = Window:Tab({
+    Title = "Teleport",
+    Icon = "send"
+})
+
+local DiscordTab = Window:Tab({
+    Title = "Discord",
+    Icon = "message-circle"
+})
+
+local SettingsTab = Window:Tab({
+    Title = "Settings",
+    Icon = "settings"
+})
+
+MainTab:Section({
+    Title = "ข้อมูลทั่วไป",
+    Icon = "info"
+})
+
+MainTab:Paragraph({
+    Title = "Flexozy X 128Bit",
+    Desc = "\nเวอร์ชัน " .. CONFIG.Version,
+    Image = CONFIG.Logo,
+    ImageSize = 50,
+})
+
+MainTab:Paragraph({
+    Title = DiscordInfo.Name,
+    Desc = DiscordDesc(),
+    Image = DiscordInfo.Icon,
+    ImageSize = 50,
+    Buttons = {
+        {
+            Icon = "copy",
+            Title = "คัดลอก",
+            Callback = function()
+                CopyDiscord(2)
+            end
+        }
+    }
+})
+
+MainTab:Section({
+    Title = "ออร่าโจมตี",
+    Icon = "zap"
+})
+
+local AuraEnabled = false
+local AuraIgnoreFriends = true
+
+MainTab:Toggle({
+    Title = "เปิด Aura",
+    Desc = "โจมตีผู้เล่นใกล้เคียงเมื่อถืออาวุธ",
+    Value = false,
+    Callback = function(value)
+        AuraEnabled = value
+    end
+})
+
+MainTab:Toggle({
+    Title = "ไม่โจมตีเพื่อน",
+    Desc = "ข้ามผู้เล่นที่เป็นเพื่อน",
+    Value = true,
+    Callback = function(value)
+        AuraIgnoreFriends = value
+    end
+})
+
+RunService.Heartbeat:Connect(function()
+    if not AuraEnabled then
+        return
+    end
+
+    if not Character then
+        return
+    end
+
+    local tool = Character:FindFirstChildOfClass("Tool")
+
+    if not tool or not tool:FindFirstChild("Handle") then
+        return
+    end
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local skip = false
+
+            if AuraIgnoreFriends then
+                skip = IsFriend(player)
+            end
+
+            if not skip then
+                pcall(function()
+                    tool:Activate()
+                end)
+
+                for _, part in ipairs(player.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        pcall(function()
+                            firetouchinterest(tool.Handle, part, 0)
+                            firetouchinterest(tool.Handle, part, 1)
+                        end)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+MainTab:Section({
+    Title = "ข้อมูลผู้เล่น",
+    Icon = "user"
+})
+
+MainTab:Paragraph({
+    Title = "บัญชีผู้เล่น",
+    Desc = "Username: " .. LocalPlayer.Name .. "\nชื่อที่แสดง: " .. LocalPlayer.DisplayName,
+    Image = CONFIG.Logo,
+    ImageSize = 45,
+})
+
+MainTab:Button({
+    Title = "คัดลอกชื่อผู้ใช้",
+    Desc = "คัดลอก Username ของคุณ",
+    Callback = function()
+        if setclipboard then
+            setclipboard(LocalPlayer.Name)
+            WindUI:Notify({
+                Title = "คัดลอกสำเร็จ",
+                Content = "คัดลอกชื่อผู้ใช้แล้ว",
+                Duration = 2,
+                Icon = "check"
+            })
+        end
+    end
+})
+
+ESPTab:Section({
+    Title = "ระบบ ESP ผู้เล่น",
+    Icon = "users"
+})
+
+local ESPEnabled = false
+local ESPIgnoreFriends = false
+local ESPObjects = {}
+
+local function RemoveESP(player)
+    local object = ESPObjects[player]
+
+    if object then
+        if object.Highlight then
+            object.Highlight:Destroy()
+        end
+
+        if object.Billboard then
+            object.Billboard:Destroy()
+        end
+
+        ESPObjects[player] = nil
+    end
+end
+
+local function CreateESP(player)
+    if player == LocalPlayer then
+        return
+    end
+
+    if not player.Character then
+        return
+    end
+
+    if ESPIgnoreFriends and IsFriend(player) then
+        RemoveESP(player)
+        return
+    end
+
+    RemoveESP(player)
+
+    local character = player.Character
+    local head = character:FindFirstChild("Head")
+
+    if not head then
+        return
+    end
+
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "FlexozyESP"
+    highlight.FillColor = CONFIG.Accent
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.5
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = character
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "FlexozyESPName"
+    billboard.Size = UDim2.fromOffset(180, 32)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Adornee = head
+    billboard.Parent = character
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.fromScale(1, 1)
+    label.BackgroundTransparency = 1
+    label.Text = player.Name
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextStrokeTransparency = 0.4
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 13
+    label.Parent = billboard
+
+    ESPObjects[player] = {
+        Highlight = highlight,
+        Billboard = billboard
+    }
+end
+
+local function RefreshESP()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if ESPEnabled then
+                CreateESP(player)
+            else
+                RemoveESP(player)
+            end
+        end
+    end
+end
+
+ESPTab:Toggle({
+    Title = "เปิด ESP ผู้เล่น",
+    Desc = "แสดงผู้เล่นทั้งหมดผ่านกำแพง",
+    Value = false,
+    Callback = function(value)
+        ESPEnabled = value
+        RefreshESP()
+    end
+})
+
+ESPTab:Toggle({
+    Title = "ซ่อนเพื่อนใน ESP",
+    Desc = "ไม่แสดงเพื่อนในระบบ ESP",
+    Value = false,
+    Callback = function(value)
+        ESPIgnoreFriends = value
+        RefreshESP()
+    end
+})
+
+ESPTab:Section({
+    Title = "ป้ายชื่อผู้เล่น",
+    Icon = "tag"
+})
+
+local TagEnabled = false
+
+local function UpdateTags()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local head = player.Character:FindFirstChild("Head")
+
+            if head then
+                local old = head:FindFirstChild("FlexozyTag")
+
+                if TagEnabled then
+                    if not old then
+                        local gui = Instance.new("BillboardGui")
+                        gui.Name = "FlexozyTag"
+                        gui.Size = UDim2.fromOffset(180, 30)
+                        gui.StudsOffset = Vector3.new(0, 3, 0)
+                        gui.AlwaysOnTop = true
+                        gui.Adornee = head
+                        gui.Parent = head
+
+                        local text = Instance.new("TextLabel")
+                        text.Size = UDim2.fromScale(1, 1)
+                        text.BackgroundTransparency = 1
+                        text.Text = player.Name
+                        text.TextColor3 = CONFIG.Accent2
+                        text.TextStrokeTransparency = 0.3
+                        text.Font = Enum.Font.GothamBold
+                        text.TextSize = 13
+                        text.Parent = gui
+                    end
+                elseif old then
+                    old:Destroy()
+                end
+            end
+        end
+    end
+end
+
+ESPTab:Toggle({
+    Title = "แสดงป้ายชื่อ",
+    Desc = "แสดงชื่อผู้เล่นเหนือศีรษะ",
+    Value = false,
+    Callback = function(value)
+        TagEnabled = value
+        UpdateTags()
+    end
+})
+
+RunService.RenderStepped:Connect(function()
+    if TagEnabled then
+        UpdateTags()
+    end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5)
+
+        if ESPEnabled then
+            CreateESP(player)
+        end
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    RemoveESP(player)
+end)
+
+PlayerTab:Section({
+    Title = "การเคลื่อนที่",
+    Icon = "move"
+})
+
+local SpeedEnabled = false
+local SpeedValue = 16
+
+PlayerTab:Toggle({
+    Title = "เพิ่มความเร็ว",
+    Desc = "เพิ่มความเร็วในการเดิน",
+    Value = false,
+    Callback = function(value)
+        SpeedEnabled = value
+
+        if Humanoid then
+            Humanoid.WalkSpeed = value and SpeedValue or 16
+        end
+    end
+})
+
+PlayerTab:Slider({
+    Title = "ความเร็ว",
+    Desc = "ปรับค่าความเร็วในการเดิน",
+    Step = 1,
+    Value = {
+        Min = 16,
+        Max = 100,
+        Default = 16
+    },
+    Callback = function(value)
+        SpeedValue = value
+
+        if SpeedEnabled and Humanoid then
+            Humanoid.WalkSpeed = value
+        end
+    end
+})
+
+PlayerTab:Section({
+    Title = "การกระโดด",
+    Icon = "arrow-up"
+})
+
+local InfiniteJump = false
+
+PlayerTab:Toggle({
+    Title = "กระโดดไม่จำกัด",
+    Desc = "สามารถกระโดดกลางอากาศได้",
+    Value = false,
+    Callback = function(value)
+        InfiniteJump = value
+    end
+})
+
+UserInputService.JumpRequest:Connect(function()
+    if InfiniteJump and Humanoid then
+        Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+PlayerTab:Section({
+    Title = "ตัวละคร",
+    Icon = "user"
+})
+
+local Noclip = false
+
+PlayerTab:Toggle({
+    Title = "เดินทะลุกำแพง",
+    Desc = "ปิดการชนของตัวละคร",
+    Value = false,
+    Callback = function(value)
+        Noclip = value
+    end
+})
+
+RunService.Stepped:Connect(function()
+    if not Noclip then
+        return
+    end
+
+    if Character then
+        for _, part in ipairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+TeleportTab:Section({
+    Title = "เทเลพอร์ตไปหาผู้เล่น",
+    Icon = "users"
+})
+
+local SelectedPlayer = nil
+
+local function GetPlayersList()
+    local list = {}
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(list, player.Name)
+        end
+    end
+
+    return list
+end
+
+local PlayerDropdown = TeleportTab:Dropdown({
+    Title = "เลือกผู้เล่น",
+    Desc = "เลือกผู้เล่นที่ต้องการเทเลพอร์ตไปหา",
+    Values = GetPlayersList(),
+    Multi = false,
+    Callback = function(value)
+        SelectedPlayer = value
+    end
+})
+
+Players.PlayerAdded:Connect(function()
+    task.wait(0.5)
+    PlayerDropdown:Refresh(GetPlayersList())
+end)
+
+Players.PlayerRemoving:Connect(function()
+    task.wait(0.1)
+    PlayerDropdown:Refresh(GetPlayersList())
+end)
+
+TeleportTab:Button({
+    Title = "เทเลพอร์ตไปหา",
+    Desc = "เทเลพอร์ตไปยังผู้เล่นที่เลือก",
+    Callback = function()
+        if not SelectedPlayer then
+            WindUI:Notify({
+                Title = "เทเลพอร์ต",
+                Content = "กรุณาเลือกผู้เล่นก่อน",
+                Duration = 2,
+                Icon = "x"
+            })
+            return
+        end
+
+        local target = Players:FindFirstChild(SelectedPlayer)
+
+        if target and target.Character then
+            local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+
+            if targetRoot and Character then
+                Character:PivotTo(
+                    targetRoot.CFrame + Vector3.new(0, 3, 0)
+                )
+            end
+        end
+    end
+})
+
+DiscordTab:Section({
+    Title = DiscordInfo.Name,
+    Icon = "message-circle"
+})
+
+DiscordTab:Paragraph({
+    Title = DiscordInfo.Name,
+    Desc = DiscordDesc() .. "\n" .. CONFIG.Discord,
+    Image = DiscordInfo.Icon,
+    ImageSize = 60,
+    Buttons = {
+        {
+            Icon = "copy",
+            Title = "คัดลอก",
+            Callback = function()
+                CopyDiscord(2)
+            end
+        }
+    }
+})
+
+DiscordTab:Button({
+    Title = "คัดลอกลิงก์ Discord",
+    Desc = CONFIG.Discord,
+    Callback = function()
+        CopyDiscord(2)
+    end
+})
+
+SettingsTab:Section({
+    Title = "อินเทอร์เฟซ",
+    Icon = "settings"
+})
+
+SettingsTab:Button({
+    Title = "คัดลอกชื่อ Hub",
+    Desc = "คัดลอกชื่อ Flexozy Hub X",
+    Callback = function()
+        if setclipboard then
+            setclipboard("Flexozy Hub X")
+
+            WindUI:Notify({
+                Title = "คัดลอกสำเร็จ",
+                Content = "คัดลอกชื่อ Hub แล้ว",
+                Duration = 2,
+                Icon = "check"
+            })
+        end
+    end
+})
+
+SettingsTab:Section({
+    Title = "ตัวละคร",
+    Icon = "user"
+})
+
+SettingsTab:Button({
+    Title = "โหลดตัวละครใหม่",
+    Desc = "รีเซ็ตตัวละครของคุณ",
+    Callback = function()
+        if LocalPlayer.Character then
+            LocalPlayer.Character:BreakJoints()
+        end
+    end
+})
+
+SettingsTab:Section({
+    Title = "เปลี่ยนรูปแบบตัวละคร",
+    Icon = "refresh-cw"
+})
+
+local function TryChangeRig(rigType)
+    if not LocalPlayer.Character then
+        WindUI:Notify({
+            Title = "เปลี่ยน Rig",
+            Content = "ไม่พบตัวละคร",
+            Duration = 2,
+            Icon = "x"
+        })
+        return
+    end
+
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+    local remote =
+        ReplicatedStorage:FindFirstChild("RigType")
+        or ReplicatedStorage:FindFirstChild("ChangeRig")
+        or ReplicatedStorage:FindFirstChild("SetRig")
+        or ReplicatedStorage:FindFirstChild("ChangeRigType")
+
+    if remote and remote:IsA("RemoteEvent") then
+        pcall(function()
+            remote:FireServer(rigType)
+        end)
+
+        WindUI:Notify({
+            Title = "เปลี่ยน Rig",
+            Content = "ส่งคำขอเปลี่ยนเป็น " .. rigType .. " แล้ว",
+            Duration = 2,
+            Icon = "check"
+        })
+
+        return
+    end
+
+    pcall(function()
+        LocalPlayer.Character:BreakJoints()
+    end)
+
+    WindUI:Notify({
+        Title = "เปลี่ยน Rig",
+        Content = "ไม่พบระบบเปลี่ยน Rig จึงโหลดตัวละครใหม่",
+        Duration = 3,
+        Icon = "x"
+    })
+end
+
+SettingsTab:Button({
+    Title = "เปลี่ยนเป็น R6",
+    Desc = "เปลี่ยนตัวละครเป็น R6",
+    Callback = function()
+        TryChangeRig("R6")
+    end
+})
+
+SettingsTab:Button({
+    Title = "เปลี่ยนเป็น R15",
+    Desc = "เปลี่ยนตัวละครเป็น R15",
+    Callback = function()
+        TryChangeRig("R15")
+    end
+})
+
+SettingsTab:Section({
+    Title = "เซิร์ฟเวอร์",
+    Icon = "server"
+})
+
+SettingsTab:Button({
+    Title = "เข้าเซิร์ฟเวอร์ใหม่",
+    Desc = "ออกแล้วเข้าเซิร์ฟเวอร์ปัจจุบันใหม่",
+    Callback = function()
+        TeleportService:Teleport(
+            game.PlaceId,
+            LocalPlayer
+        )
+    end
+})
+
+WindUI:Notify({
+    Title = "Flexozy Hub X",
+    Content = "โหลดสำเร็จ • ยินดีต้อนรับ " .. LocalPlayer.Name,
+    Duration = 5,
+    Icon = "check"
+})
