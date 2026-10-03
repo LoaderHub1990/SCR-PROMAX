@@ -1,0 +1,1162 @@
+local genv = (getgenv and getgenv()) or _G
+
+if genv.__FLEXOZY_LUCKY_CLEANUP then
+    pcall(genv.__FLEXOZY_LUCKY_CLEANUP)
+    task.wait(0.15)
+end
+
+local WindUI = loadstring(game:HttpGet(
+    "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
+))()
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local HttpService = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
+
+local LocalPlayer = Players.LocalPlayer
+
+local LOGO_ID = "rbxassetid://112028775617493"
+local DISCORD_LINK = "https://discord.gg/WFUejxeggt"
+local DISCORD_CODE = "WFUejxeggt"
+
+WindUI:AddTheme({
+    Name = "FlexozyMM2",
+
+    Accent = Color3.fromHex("#00CFFF"),
+
+    Background = WindUI:Gradient({
+        ["0"] = {
+            Color = Color3.fromHex("#123B52"),
+            Transparency = 0
+        },
+
+        ["100"] = {
+            Color = Color3.fromHex("#071D2B"),
+            Transparency = 0
+        }
+    }, {
+        Rotation = 90
+    }),
+
+    Outline = Color3.fromHex("#55E5FF"),
+    Text = Color3.fromHex("#FFFFFF"),
+    Placeholder = Color3.fromHex("#9DD9E8"),
+    Button = Color3.fromHex("#15506A"),
+    Icon = Color3.fromHex("#6DEAFF")
+})
+
+local flags = {
+    walkSpeed = 16,
+    speedOn = false,
+    infJump = false,
+    godmode = false,
+    targetPlayer = ""
+}
+
+local connections = {}
+
+local function track(connection)
+    table.insert(connections, connection)
+    return connection
+end
+
+local function notify(title, content, duration)
+    pcall(function()
+        WindUI:Notify({
+            Title = title,
+            Content = content,
+            Duration = duration or 3,
+            Icon = "info"
+        })
+    end)
+end
+
+local function getHumanoid()
+    local character = LocalPlayer.Character
+    return character and character:FindFirstChildOfClass("Humanoid")
+end
+
+local function getRoot()
+    local character = LocalPlayer.Character
+    return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+local function fireBlock(name)
+    local remote = ReplicatedStorage:FindFirstChild(name)
+
+    if remote then
+        pcall(function()
+            remote:FireServer()
+        end)
+
+        return true
+    end
+
+    return false
+end
+
+local function fireTimes(name, times)
+    task.spawn(function()
+        for i = 1, times do
+            fireBlock(name)
+            task.wait(0.15)
+        end
+    end)
+end
+
+local function buildFortress()
+    local humanoid = getHumanoid()
+
+    if not humanoid then
+        return
+    end
+
+    pcall(function()
+        humanoid.MaxHealth = math.huge
+    end)
+
+    pcall(function()
+        humanoid.Health = math.huge
+    end)
+
+    pcall(function()
+        humanoid:SetStateEnabled(
+            Enum.HumanoidStateType.Dead,
+            false
+        )
+    end)
+
+    pcall(function()
+        if Workspace.FallenPartsDestroyHeight > -50000 then
+            Workspace.FallenPartsDestroyHeight = -50000
+        end
+    end)
+end
+
+track(LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+
+    if flags.godmode then
+        buildFortress()
+    end
+end))
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+
+        if flags.godmode then
+            local humanoid = getHumanoid()
+
+            if humanoid then
+                pcall(function()
+                    humanoid:SetStateEnabled(
+                        Enum.HumanoidStateType.Dead,
+                        false
+                    )
+
+                    if humanoid.Health < humanoid.MaxHealth then
+                        humanoid.Health = humanoid.MaxHealth
+                    end
+                end)
+            end
+        end
+    end
+end)
+
+track(RunService.Heartbeat:Connect(function()
+    if not flags.speedOn then
+        return
+    end
+
+    local humanoid = getHumanoid()
+
+    if humanoid and humanoid.WalkSpeed ~= flags.walkSpeed then
+        humanoid.WalkSpeed = flags.walkSpeed
+    end
+end))
+
+track(UserInputService.JumpRequest:Connect(function()
+    if not flags.infJump then
+        return
+    end
+
+    local humanoid = getHumanoid()
+
+    if humanoid then
+        humanoid:ChangeState(
+            Enum.HumanoidStateType.Jumping
+        )
+    end
+end))
+
+local function GetRequestFunction()
+    if typeof(request) == "function" then
+        return request
+    end
+
+    if typeof(http_request) == "function" then
+        return http_request
+    end
+
+    if syn and typeof(syn.request) == "function" then
+        return syn.request
+    end
+
+    if http and typeof(http.request) == "function" then
+        return http.request
+    end
+
+    return nil
+end
+
+local function FormatNumber(number)
+    number = tonumber(number) or 0
+
+    local value = tostring(math.floor(number))
+
+    local result =
+        value
+        :reverse()
+        :gsub("(%d%d%d)", "%1,")
+        :reverse()
+
+    return result:gsub("^,", "")
+end
+
+local DiscordInfo = {
+    Name = "Discord",
+    Icon = LOGO_ID,
+    Online = 0,
+    Offline = 0,
+    Members = 0,
+    Success = false
+}
+
+local function FetchDiscord()
+    local requestFunction = GetRequestFunction()
+
+    if not requestFunction then
+        DiscordInfo.Success = false
+        return false
+    end
+
+    local success, response = pcall(function()
+        return requestFunction({
+            Url =
+                "https://discord.com/api/v10/invites/"
+                .. DISCORD_CODE
+                .. "?with_counts=true",
+
+            Method = "GET"
+        })
+    end)
+
+    if not success
+        or not response
+        or response.StatusCode ~= 200
+        or not response.Body then
+
+        DiscordInfo.Success = false
+        return false
+    end
+
+    local jsonSuccess, data = pcall(function()
+        return HttpService:JSONDecode(response.Body)
+    end)
+
+    if not jsonSuccess or type(data) ~= "table" then
+        DiscordInfo.Success = false
+        return false
+    end
+
+    local guild = data.guild
+
+    if type(guild) ~= "table" then
+        DiscordInfo.Success = false
+        return false
+    end
+
+    local online =
+        tonumber(data.approximate_presence_count)
+        or 0
+
+    local members =
+        tonumber(data.approximate_member_count)
+        or 0
+
+    local offline =
+        math.max(members - online, 0)
+
+    DiscordInfo.Name =
+        tostring(guild.name or "Discord")
+
+    DiscordInfo.Online = online
+    DiscordInfo.Offline = offline
+    DiscordInfo.Members = members
+    DiscordInfo.Success = true
+
+    if guild.id and guild.icon then
+        DiscordInfo.Icon =
+            "https://cdn.discordapp.com/icons/"
+            .. tostring(guild.id)
+            .. "/"
+            .. tostring(guild.icon)
+            .. ".png?size=128"
+    else
+        DiscordInfo.Icon = LOGO_ID
+    end
+
+    return true
+end
+
+FetchDiscord()
+
+local function GetInventoryCount()
+    local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+
+    if not backpack then
+        return 0
+    end
+
+    local count = 0
+
+    for _, item in ipairs(backpack:GetChildren()) do
+        count += 1
+    end
+
+    return count
+end
+
+local Window = WindUI:CreateWindow({
+    Title =
+        '<font color="#00BFFF">F</font>'
+        .. '<font color="#18C5FF">l</font>'
+        .. '<font color="#30CBFF">e</font>'
+        .. '<font color="#48D1FF">x</font>'
+        .. '<font color="#60D7FF">o</font>'
+        .. '<font color="#78DDFF">z</font>'
+        .. '<font color="#90E3FF">y</font>',
+
+    Icon = LOGO_ID,
+
+    Author = "Flexozy",
+
+    Size = UDim2.fromOffset(580, 460),
+
+    Transparent = true,
+
+    Theme = "FlexozyMM2",
+
+    SideBarWidth = 190,
+
+    User = {
+        Enabled = true,
+        Anonymous = false,
+
+        Callback = function()
+            notify(
+                "Flexozy",
+                "Welcome, " .. LocalPlayer.Name .. "!",
+                3
+            )
+        end
+    }
+})
+
+Window:EditOpenButton({
+    Title = "Flexozy",
+
+    Icon = LOGO_ID,
+
+    CornerRadius = UDim.new(0, 16),
+
+    StrokeThickness = 2,
+
+    Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(
+            0,
+            Color3.fromHex("#004B66")
+        ),
+
+        ColorSequenceKeypoint.new(
+            0.35,
+            Color3.fromHex("#008CB8")
+        ),
+
+        ColorSequenceKeypoint.new(
+            0.65,
+            Color3.fromHex("#00CFFF")
+        ),
+
+        ColorSequenceKeypoint.new(
+            1,
+            Color3.fromHex("#55E5FF")
+        )
+    }),
+
+    OnlyMobile = false,
+    Enabled = true,
+    Draggable = true
+})
+
+Window:Tag({
+    Title = "Flexozy",
+    Icon = "star",
+    Color = Color3.fromRGB(0, 207, 255)
+})
+
+Window:Tag({
+    Title = "Lucky Blocks",
+    Icon = "box",
+    Color = Color3.fromRGB(85, 229, 255)
+})
+
+WindUI:Popup({
+    Title = "Flexozy",
+    Icon = "message-circle",
+
+    Content =
+        "เข้าร่วม Discord ของ Flexozy เพื่อรับข่าวสารและอัปเดต",
+
+    Buttons = {
+        {
+            Title = "Copy Discord",
+            Icon = "copy",
+
+            Callback = function()
+                if setclipboard then
+                    setclipboard(DISCORD_LINK)
+
+                    notify(
+                        "Copied",
+                        "คัดลอก Discord แล้ว",
+                        2
+                    )
+                else
+                    notify(
+                        "Clipboard",
+                        "Executor นี้ไม่รองรับ setclipboard",
+                        3
+                    )
+                end
+            end,
+
+            Variant = "Primary"
+        },
+
+        {
+            Title = "Continue",
+            Icon = "arrow-right",
+
+            Callback = function()
+            end,
+
+            Variant = "Tertiary"
+        }
+    }
+})
+
+local HomeTab = Window:Tab({
+    Title = "Home",
+    Icon = "home"
+})
+
+local BlocksTab = Window:Tab({
+    Title = "Blocks",
+    Icon = "box"
+})
+
+local PlayerTab = Window:Tab({
+    Title = "Player",
+    Icon = "user"
+})
+
+local DiscordTab = Window:Tab({
+    Title = "Discord",
+    Icon = "message-circle"
+})
+
+HomeTab:Section({
+    Title = "Information",
+    Icon = "info"
+})
+
+HomeTab:Paragraph({
+    Title = "Flexozy | Lucky Blocks",
+
+    Desc =
+        "Lucky Blocks script พร้อมระบบ Player Utilities",
+
+    Image = LOGO_ID,
+
+    ImageSize = 50,
+
+    Buttons = {
+        {
+            Icon = "copy",
+
+            Title = "Copy Discord",
+
+            Callback = function()
+                if setclipboard then
+                    setclipboard(DISCORD_LINK)
+
+                    notify(
+                        "Copied",
+                        "คัดลอก Discord แล้ว",
+                        2
+                    )
+                end
+            end
+        }
+    }
+})
+
+HomeTab:Section({
+    Title = "Status",
+    Icon = "activity"
+})
+
+local StatusParagraph = HomeTab:Paragraph({
+    Title = "Player Status",
+
+    Desc =
+        "Player: "
+        .. LocalPlayer.Name
+        .. "\nGame: "
+        .. tostring(game.PlaceId)
+        .. "\nInventory: "
+        .. FormatNumber(GetInventoryCount())
+        .. " ชิ้น"
+})
+
+local GameName = tostring(game.Name or game.PlaceId)
+
+pcall(function()
+    local info =
+        MarketplaceService:GetProductInfo(
+            game.PlaceId
+        )
+
+    if info and info.Name then
+        GameName = tostring(info.Name)
+    end
+end)
+
+pcall(function()
+    StatusParagraph:Set({
+        Title = "Player Status",
+
+        Desc =
+            "Player: "
+            .. LocalPlayer.Name
+            .. "\nGame: "
+            .. GameName
+            .. "\nInventory: "
+            .. FormatNumber(GetInventoryCount())
+            .. " ชิ้น"
+    })
+end)
+
+local function UpdateInventoryStatus()
+    local count = GetInventoryCount()
+
+    pcall(function()
+        StatusParagraph:Set({
+            Title = "Player Status",
+
+            Desc =
+                "Player: "
+                .. LocalPlayer.Name
+                .. "\nGame: "
+                .. GameName
+                .. "\nInventory: "
+                .. FormatNumber(count)
+                .. " ชิ้น"
+        })
+    end)
+end
+
+local Backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+
+if Backpack then
+    track(Backpack.ChildAdded:Connect(function()
+        task.wait()
+        UpdateInventoryStatus()
+    end))
+
+    track(Backpack.ChildRemoved:Connect(function()
+        task.wait()
+        UpdateInventoryStatus()
+    end))
+end
+
+track(LocalPlayer.ChildAdded:Connect(function(child)
+    if child:IsA("Backpack") then
+
+        track(child.ChildAdded:Connect(function()
+            task.wait()
+            UpdateInventoryStatus()
+        end))
+
+        track(child.ChildRemoved:Connect(function()
+            task.wait()
+            UpdateInventoryStatus()
+        end))
+
+        UpdateInventoryStatus()
+    end
+end))
+
+BlocksTab:Section({
+    Title = "Lucky Blocks",
+    Icon = "box"
+})
+
+BlocksTab:Button({
+    Title = "Spawn Lucky Block",
+    Desc = "สร้าง Lucky Block",
+
+    Callback = function()
+        if fireBlock("SpawnLuckyBlock") then
+            notify(
+                "Lucky Block",
+                "Spawn สำเร็จ",
+                2
+            )
+        else
+            notify(
+                "Lucky Block",
+                "ไม่พบ Remote",
+                3
+            )
+        end
+    end
+})
+
+BlocksTab:Button({
+    Title = "Spawn Super Block",
+    Desc = "สร้าง Super Block",
+
+    Callback = function()
+        if fireBlock("SpawnSuperBlock") then
+            notify(
+                "Super Block",
+                "Spawn สำเร็จ",
+                2
+            )
+        else
+            notify(
+                "Super Block",
+                "ไม่พบ Remote",
+                3
+            )
+        end
+    end
+})
+
+BlocksTab:Button({
+    Title = "Spawn Diamond Block",
+    Desc = "สร้าง Diamond Block",
+
+    Callback = function()
+        if fireBlock("SpawnDiamondBlock") then
+            notify(
+                "Diamond Block",
+                "Spawn สำเร็จ",
+                2
+            )
+        else
+            notify(
+                "Diamond Block",
+                "ไม่พบ Remote",
+                3
+            )
+        end
+    end
+})
+
+BlocksTab:Button({
+    Title = "Spawn Rainbow Block",
+    Desc = "สร้าง Rainbow Block",
+
+    Callback = function()
+        if fireBlock("SpawnRainbowBlock") then
+            notify(
+                "Rainbow Block",
+                "Spawn สำเร็จ",
+                2
+            )
+        else
+            notify(
+                "Rainbow Block",
+                "ไม่พบ Remote",
+                3
+            )
+        end
+    end
+})
+
+BlocksTab:Button({
+    Title = "Spawn Galaxy Block",
+    Desc = "สร้าง Galaxy Block",
+
+    Callback = function()
+        if fireBlock("SpawnGalaxyBlock") then
+            notify(
+                "Galaxy Block",
+                "Spawn สำเร็จ",
+                2
+            )
+        else
+            notify(
+                "Galaxy Block",
+                "ไม่พบ Remote",
+                3
+            )
+        end
+    end
+})
+
+BlocksTab:Button({
+    Title = "Spawn Void Block",
+    Desc = "ใช้ Rainbow + Galaxy",
+
+    Callback = function()
+        local rainbow =
+            ReplicatedStorage:FindFirstChild(
+                "SpawnRainbowBlock"
+            )
+
+        local galaxy =
+            ReplicatedStorage:FindFirstChild(
+                "SpawnGalaxyBlock"
+            )
+
+        if not rainbow or not galaxy then
+            notify(
+                "Void Block",
+                "ไม่พบ Remote ที่จำเป็น",
+                3
+            )
+
+            return
+        end
+
+        task.spawn(function()
+            for i = 1, 2 do
+                pcall(function()
+                    rainbow:FireServer()
+                end)
+
+                task.wait(0.2)
+            end
+
+            for i = 1, 3 do
+                pcall(function()
+                    galaxy:FireServer()
+                end)
+
+                task.wait(0.2)
+            end
+
+            notify(
+                "Void Block",
+                "Spawn สำเร็จ",
+                2
+            )
+        end)
+    end
+})
+
+BlocksTab:Button({
+    Title = "Spawn Limited Block",
+    Desc = "ยิง Galaxy Block 15 ครั้ง",
+
+    Callback = function()
+        if not ReplicatedStorage:FindFirstChild(
+            "SpawnGalaxyBlock"
+        ) then
+            notify(
+                "Limited Block",
+                "ไม่พบ Galaxy Remote",
+                3
+            )
+
+            return
+        end
+
+        fireTimes(
+            "SpawnGalaxyBlock",
+            15
+        )
+
+        notify(
+            "Limited Block",
+            "กำลัง Spawn...",
+            2
+        )
+    end
+})
+
+BlocksTab:Section({
+    Title = "Information",
+    Icon = "info"
+})
+
+BlocksTab:Paragraph({
+    Title = "How it works",
+
+    Desc =
+        "Blocks จะตกลงบริเวณ Base ของคุณ ให้เดินเข้าไปเปิด Block"
+})
+
+PlayerTab:Section({
+    Title = "Movement",
+    Icon = "move"
+})
+
+PlayerTab:Input({
+    Title = "WalkSpeed",
+
+    Desc = "กำหนดความเร็วเดิน",
+
+    Placeholder = "16",
+
+    Value = "16",
+
+    Callback = function(value)
+        local number = tonumber(value)
+
+        if number then
+            flags.walkSpeed = number
+            flags.speedOn = true
+
+            notify(
+                "WalkSpeed",
+                "ตั้งความเร็วเป็น " .. number,
+                2
+            )
+        end
+    end
+})
+
+PlayerTab:Toggle({
+    Title = "Speed Enabled",
+
+    Desc = "เปิดใช้งาน WalkSpeed",
+
+    Value = false,
+
+    Callback = function(value)
+        flags.speedOn = value
+    end
+})
+
+PlayerTab:Toggle({
+    Title = "Infinite Jump",
+
+    Desc = "กระโดดกลางอากาศได้",
+
+    Value = false,
+
+    Callback = function(value)
+        flags.infJump = value
+    end
+})
+
+PlayerTab:Section({
+    Title = "Protection",
+    Icon = "shield"
+})
+
+PlayerTab:Toggle({
+    Title = "Godmode",
+
+    Desc = "เปิดระบบป้องกันการตาย",
+
+    Value = false,
+
+    Callback = function(value)
+        flags.godmode = value
+
+        if value then
+            buildFortress()
+
+            notify(
+                "Godmode",
+                "เปิดใช้งานแล้ว",
+                3
+            )
+        else
+            notify(
+                "Godmode",
+                "ปิดใช้งานแล้ว",
+                2
+            )
+        end
+    end
+})
+
+PlayerTab:Section({
+    Title = "Teleport",
+    Icon = "send"
+})
+
+local SelectedPlayer = nil
+local PlayerList = {}
+
+local function RefreshPlayers()
+    PlayerList = {}
+
+    for _, player in ipairs(
+        Players:GetPlayers()
+    ) do
+        if player ~= LocalPlayer then
+            table.insert(
+                PlayerList,
+                player.Name
+            )
+        end
+    end
+
+    table.sort(PlayerList)
+end
+
+RefreshPlayers()
+
+local PlayerDropdown = PlayerTab:Dropdown({
+    Title = "Target Player",
+
+    Desc = "เลือกผู้เล่นที่จะ Teleport",
+
+    Values =
+        #PlayerList > 0
+        and PlayerList
+        or {"Nobody Online"},
+
+    Multi = false,
+
+    Callback = function(value)
+        if type(value) == "table" then
+            SelectedPlayer = value[1]
+        else
+            SelectedPlayer = value
+        end
+
+        flags.targetPlayer =
+            SelectedPlayer or ""
+    end
+})
+
+task.spawn(function()
+    local lastRoster = ""
+
+    while true do
+        task.wait(2)
+
+        RefreshPlayers()
+
+        local signature =
+            table.concat(
+                PlayerList,
+                "|"
+            )
+
+        if signature ~= lastRoster then
+            lastRoster = signature
+
+            local values =
+                #PlayerList > 0
+                and PlayerList
+                or {"Nobody Online"}
+
+            pcall(function()
+                if PlayerDropdown.Refresh then
+                    PlayerDropdown:Refresh(values)
+                end
+            end)
+        end
+    end
+end)
+
+PlayerTab:Button({
+    Title = "Teleport To Player",
+
+    Desc = "วาร์ปไปหาผู้เล่นที่เลือก",
+
+    Callback = function()
+        local targetName =
+            flags.targetPlayer
+
+        if not targetName
+            or targetName == ""
+            or targetName == "Nobody Online"
+        then
+            notify(
+                "Teleport",
+                "กรุณาเลือกผู้เล่นก่อน",
+                3
+            )
+
+            return
+        end
+
+        local target =
+            Players:FindFirstChild(
+                targetName
+            )
+
+        local targetRoot =
+            target
+            and target.Character
+            and target.Character:FindFirstChild(
+                "HumanoidRootPart"
+            )
+
+        local myRoot = getRoot()
+
+        if targetRoot and myRoot then
+            pcall(function()
+                myRoot.CFrame =
+                    targetRoot.CFrame
+                    + Vector3.new(2, 0, 0)
+            end)
+
+            notify(
+                "Teleport",
+                "Teleport สำเร็จ",
+                2
+            )
+        else
+            notify(
+                "Teleport",
+                "ไม่สามารถหาเป้าหมายได้",
+                3
+            )
+        end
+    end
+})
+
+DiscordTab:Section({
+    Title = "Flexozy Discord",
+    Icon = "message-circle"
+})
+
+if DiscordInfo.Success then
+
+    DiscordTab:Paragraph({
+        Title = DiscordInfo.Name,
+
+        Desc =
+            "Online: "
+            .. FormatNumber(DiscordInfo.Online)
+            .. "\n"
+            .. "Offline: "
+            .. FormatNumber(DiscordInfo.Offline)
+            .. "\n"
+            .. "Members: "
+            .. FormatNumber(DiscordInfo.Members),
+
+        Image = DiscordInfo.Icon,
+
+        ImageSize = 70,
+
+        Buttons = {
+            {
+                Title = "Copy Discord",
+                Icon = "copy",
+
+                Callback = function()
+                    if setclipboard then
+                        setclipboard(DISCORD_LINK)
+
+                        notify(
+                            "Copied",
+                            "คัดลอก Discord แล้ว",
+                            2
+                        )
+                    else
+                        notify(
+                            "Clipboard",
+                            "Executor นี้ไม่รองรับ setclipboard",
+                            3
+                        )
+                    end
+                end
+            }
+        }
+    })
+
+else
+
+    DiscordTab:Paragraph({
+        Title = "Discord",
+
+        Desc =
+            "Status: N/A\n"
+            .. "ไม่สามารถตรวจสอบ Discord API ได้",
+
+        Image = LOGO_ID,
+
+        ImageSize = 70
+    })
+
+end
+
+DiscordTab:Button({
+    Title = "Copy Discord Link",
+
+    Desc = DISCORD_LINK,
+
+    Callback = function()
+        if setclipboard then
+            setclipboard(DISCORD_LINK)
+
+            notify(
+                "Copied",
+                "คัดลอกลิงก์ Discord แล้ว",
+                2
+            )
+        else
+            notify(
+                "Clipboard",
+                "Executor นี้ไม่รองรับ setclipboard",
+                3
+            )
+        end
+    end
+})
+
+genv.__FLEXOZY_LUCKY_CLEANUP = function()
+    flags.speedOn = false
+    flags.infJump = false
+    flags.godmode = false
+
+    for _, connection in ipairs(
+        connections
+    ) do
+        pcall(function()
+            connection:Disconnect()
+        end)
+    end
+
+    connections = {}
+
+    pcall(function()
+        if Window.Destroy then
+            Window:Destroy()
+        end
+    end)
+end
+
+notify(
+    "Flexozy",
+    "Lucky Blocks loaded successfully!",
+    4
+)
