@@ -1,0 +1,225 @@
+local Flexozy = loadstring(game:HttpGet("https://raw.githubusercontent.com/LoaderHub1990/Flexozy-UI/refs/heads/main/FlexozyUI.lua"))()
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+local LOGO = "rbxassetid://112028775617493"
+
+local Win = Flexozy:CreateWindow({
+    Title      = "FreeFireMax",
+    SubTitle   = "Script by MagicAlay",
+    Monogram   = "FF",
+    Logo       = LOGO,
+    Size       = Vector2.new(720, 520),
+    ToggleKey  = Enum.KeyCode.RightControl,
+    StatsPill  = true,
+    Accent     = "Cyan",
+    ConfigName = "freefiremax",
+    Folder     = "Flexozy",
+    AutoSave   = true,
+})
+
+local Home = Win:Tab({ Title = "Home", Subtitle = "Overview", Icon = Flexozy.Icons.Grid })
+Win:BuildHome(Home)
+
+local Main = Win:Tab({ Title = "Main", Subtitle = "Auto Kill", Icon = Flexozy.Icons.Sword })
+local gMain = Main:Group("Combat", "Left")
+
+local Set = Win:Tab({ Title = "Settings", Subtitle = "Interface options", Icon = Flexozy.Icons.Settings })
+Win:BuildSettings(Set)
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Eventos = ReplicatedStorage:WaitForChild("Eventos", 10)
+if not Eventos then
+    Win:Notify({ Title = "Error", Content = "ไม่พบ Eventos ใน ReplicatedStorage", Type = "Error" })
+    return
+end
+
+local WeaponFired          = Eventos:WaitForChild("WeaponFired", 10)
+local WeaponHit            = Eventos:WaitForChild("WeaponHit", 10)
+local WeaponReloadRequest  = Eventos:WaitForChild("WeaponReloadRequest", 10)
+
+local Shop = ReplicatedStorage:FindFirstChild("Shop")
+local WeaponsSystem
+if Shop then
+    local ws = Shop:FindFirstChild("WeaponsSystem")
+    if ws then
+        local ok, result = pcall(require, ws)
+        if ok then WeaponsSystem = result end
+    end
+end
+
+getgenv().ShootKA_Enabled   = getgenv().ShootKA_Enabled   or false
+getgenv().ShootKA_HeldOnly  = getgenv().ShootKA_HeldOnly  or false
+
+local QD_DELAY   = 0.15
+local MAX_RANGE  = 900
+local shotCounter = 0
+local ammoCounter = 0
+_G.__SHOTBASE  = nil
+_G.__SHOTEXTRA = 0
+
+local function getCurrentWeapon()
+    if not WeaponsSystem then return nil end
+    local current = WeaponsSystem.currentWeapon
+    if current and current.instance and current.instance.Parent then
+        return current
+    end
+    local char = LocalPlayer.Character or Workspace:FindFirstChild(LocalPlayer.Name)
+    local tool = char and char:FindFirstChildWhichIsA("Tool")
+    if not tool then
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        tool = backpack and backpack:FindFirstChildWhichIsA("Tool")
+    end
+    if tool then
+        local ok, result = pcall(WeaponsSystem.getWeaponForInstance, tool)
+        if ok and result then return result end
+    end
+    return nil
+end
+
+local function getMuzzlePos()
+    local char = LocalPlayer.Character or Workspace:FindFirstChild(LocalPlayer.Name)
+    local head = char and char:FindFirstChild("Head")
+    if head then return head.Position end
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then return hrp.Position + Vector3.new(0, 1.5, 0) end
+    return nil
+end
+
+local function performShot()
+    local enabled  = getgenv().ShootKA_Enabled
+    local heldOnly = getgenv().ShootKA_HeldOnly
+    local char = LocalPlayer.Character
+    local hasTool = char and char:FindFirstChildWhichIsA("Tool") ~= nil
+    if not (enabled or (heldOnly and hasTool)) then return end
+
+    local weapon = getCurrentWeapon()
+    if not weapon then return end
+    local tool  = weapon.instance
+    local origin = getMuzzlePos()
+    if not origin then return end
+
+    local targets = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local pchar = plr.Character or Workspace:FindFirstChild(plr.Name)
+            local head  = pchar and pchar:FindFirstChild("Head")
+            local hum   = pchar and pchar:FindFirstChildOfClass("Humanoid")
+            if head and hum and hum.Health > 0 then
+                local dist = (head.Position - origin).Magnitude
+                if dist < MAX_RANGE then
+                    table.insert(targets, { head = head, hum = hum, d = dist })
+                end
+            end
+        end
+    end
+
+    if #targets == 0 then return end
+    table.sort(targets, function(a, b) return a.d < b.d end)
+
+    for _, tgt in ipairs(targets) do
+        if tgt.head.Parent and tgt.hum.Health > 0 then
+            local baseId = (weapon and weapon.nextShotId) or 1
+            if baseId ~= _G.__SHOTBASE then
+                _G.__SHOTBASE  = baseId
+                _G.__SHOTEXTRA = 0
+            end
+            _G.__SHOTEXTRA = _G.__SHOTEXTRA + 1
+            local shotId = baseId + _G.__SHOTEXTRA
+            local targetPos = tgt.head.Position
+            local dir  = targetPos - origin
+            local dist = dir.Magnitude
+            if dist >= 0.001 then
+                dir = dir.Unit
+                pcall(function()
+                    WeaponFired:FireServer(tool, {
+                        origin = origin, dir = dir, charge = 0, id = shotId
+                    })
+                end)
+                task.wait(0.03)
+                pcall(function()
+                    WeaponHit:FireServer(tool, {
+                        part = tgt.head, p = targetPos, n = -dir,
+                        m = tgt.head.Material, d = dist, t = 0.5,
+                        h = tgt.hum, sid = shotId, pid = 1, maxDist = dist
+                    })
+                end)
+            end
+        end
+    end
+
+    ammoCounter = ammoCounter + #targets
+    local maxAmmo = (weapon.configValues and weapon.configValues.AmmoCapacity) or 7
+    if ammoCounter >= maxAmmo - 1 then
+        ammoCounter = 0
+        pcall(function() WeaponReloadRequest:FireServer(tool) end)
+        task.wait(0.5)
+    end
+end
+
+local accumTime  = 0
+local lastClock  = os.clock()
+
+local function heartbeatStep()
+    local now = os.clock()
+    accumTime = accumTime + (now - lastClock)
+    lastClock = now
+    if accumTime >= QD_DELAY then
+        accumTime = 0
+        local ok, err = pcall(performShot)
+        if not ok then
+            warn("[FreeFireMax] " .. tostring(err))
+        end
+    end
+end
+
+if _G.__FFMAX_LOOP then
+    pcall(function() _G.__FFMAX_LOOP:Disconnect() end)
+    _G.__FFMAX_LOOP = nil
+end
+_G.__FFMAX_LOOP = RunService.Heartbeat:Connect(heartbeatStep)
+
+gMain:Toggle({
+    Title    = "Auto Kill",
+    Desc     = "ยิงอัตโนมัติใส่ศัตรูทุกตัวในระยะ",
+    Default  = getgenv().ShootKA_Enabled,
+    Flag     = "AutoKill",
+    Callback = function(on)
+        getgenv().ShootKA_Enabled = on
+        Win:Notify({
+            Title   = "Auto Kill",
+            Content = on and "เปิดใช้งาน Auto Kill" or "ปิด Auto Kill",
+            Type    = on and "Success" or "Warning",
+        })
+    end,
+})
+
+gMain:Toggle({
+    Title    = "Weapon Kill (ถืออาวุธ)",
+    Desc     = "จะยิงเมื่อถืออาวุธเท่านั้น",
+    Default  = getgenv().ShootKA_HeldOnly,
+    Flag     = "WeaponKill",
+    Callback = function(on)
+        getgenv().ShootKA_HeldOnly = on
+        Win:Notify({
+            Title   = "Weapon Kill",
+            Content = on and "จะยิงเมื่อถืออาวุธเท่านั้น" or "ปิดโหมดถืออาวุธ",
+            Type    = "Info",
+        })
+    end,
+})
+
+Win:LoadConfig()
+
+task.spawn(function()
+    task.wait(0.5)
+    Win:Notify({
+        Title    = "FreeFireMax Ready",
+        Content  = "สคริปต์โหลดสำเร็จ!",
+        Duration = 4,
+        Type     = "Success",
+    })
+end)
